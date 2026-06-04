@@ -138,7 +138,7 @@ export const plotRotation = (section: SectionComponent) => {
     const CenterDeadzone = thumbstick.rot_center_deadzone
     const entryDeadzone = thumbstick.rot_entry_deadzone
     const anticlockwise = thumbstick.rot_anticlockwise
-    const entryAngle = thumbstick.rot_relative_mode ? 45 : 0
+    const entryAngle = thumbstick.rot_relative_mode ? 45 : section.thumbstickGetActionAngle(thumbstick)
     let sensAngle = 0
     let sensLabel = ''
     let bidirectional = false

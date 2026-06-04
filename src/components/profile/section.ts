@@ -222,6 +222,16 @@ export class SectionComponent {
     return true
   }
 
+  thumbstickGetActionAngle(thumbstick: CtrlThumbstick) {
+    const profile = this.profiles.profiles[this.profileIndex]
+    const actions = profile.thumbstickGetActions(thumbstick)
+    if      (actions.up[0]   .length > 0) return 0
+    else if (actions.right[0].length > 0) return 90
+    else if (actions.down[0] .length > 0) return 180
+    else if (actions.left[0] .length > 0) return 270
+    else return 0
+  }
+
   buttonsCanHaveModifiers(button: CtrlButton) {
     const sectionName = SectionIndex[button.sectionIndex]
     const is_cardinal = (
