@@ -12,12 +12,11 @@
     .template
         flex-grow: 1
         display: flex
-        flex-direction: column
-        align-items: center
         flex-shrink: 1
         container-type: size
         width: 100%
         height: 100%
+        // align-items: center
         justify-content: center
         padding: 10px
         padding-top: 20px
@@ -34,8 +33,9 @@
             padding-left: 0% !important
 
         .fixed_aspect
-            height: min(calc(100% - 90px), 100cqw * (2600 / 3160))
-            width:  min(100%, calc((100cqh - 90px) * (3160 / 2600)))
+            position: relative
+            height: min(100%, 100cqw * (2600 / 3160))
+            width:  min(100%, 100cqh * (3160 / 2600))
             aspect-ratio: 3160 / 2600
             object-fit: contain
             background-image: url("/assets/profile_template.png")
@@ -45,42 +45,47 @@
             display: grid
             grid-template-rows: 4fr 4fr 2fr 4fr 2fr 2fr 2fr 2fr 4fr 7fr 4fr 3fr 4fr 4fr 4fr 1fr 2fr 2fr 2fr 2fr 2fr 2fr
             grid-template-columns: 12fr 12fr 3fr 3fr 3fr 3fr 1.5fr 1.5fr 1fr 1.5fr 1.5fr 3fr 3fr 3fr 3fr 12fr 9fr 3fr
-            &>div
+            &>div:not(.extras)
                 padding-left: 30%
 
+        // Extra (modded) buttons: vertical columns floating besides the
+        // controller diagram, styled like the regular mapping tiles.
+        // Positioned absolutely so they escape the diagram grid.
         .extras
-            margin-top: 10px
+            position: absolute
+            top: 1%
+            width: 100px
             display: flex
-            align-items: stretch
-            gap: 8px
-            .extras-title
-                color: hsl(0deg, 0%, 45%)
-                font-size: 11px
-                text-transform: uppercase
-                line-height: 1.3
-                align-self: center
-                margin-right: 4px
+            flex-direction: column
+            gap: 4%
+            &.extras-left
+                left: -108px
+                align-items: flex-end
+                .extra
+                    text-align: right
+                    align-items: flex-end
+            &.extras-right
+                right: -108px
             .extra
                 display: flex
                 flex-direction: column
-                min-width: 90px
-                max-width: 140px
-                padding: 5px 8px
-                border: 1px solid hsl(0deg, 0%, 30%)
+                width: 100%
+                padding: 4px 6px
                 border-radius: 5px
-                &.gap
-                    margin-left: 24px
+                overflow: visible
                 &.inherited
-                    border-style: dashed
-                    opacity: 0.75
+                    opacity: 0.55
                 .caption
                     font-size: 11px
-                    color: hsl(0deg, 0%, 60%)
+                    font-weight: bold
+                    color: hsl(0deg, 0%, 55%)
                     white-space: nowrap
-                    margin-bottom: 2px
+                    margin-bottom: 1px
                     .tag
+                        font-weight: normal
+                        font-size: 10px
                         color: hsl(0deg, 0%, 40%)
-                        margin-left: 4px
+                        margin-left: 3px
 
     .panel
         width: 300px

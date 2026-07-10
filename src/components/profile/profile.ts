@@ -237,11 +237,14 @@ export class ProfileComponent {
     return [...buttons, ...gyroAxis, rotaryUp, rotaryDown, home]
   }
 
-  // Extra (modded) buttons strip below the controller diagram. Selecting one
-  // opens the regular button editor; saving writes the whole extras section.
-  getExtraMappings() {
-    const extras = this.getProfile().extraButtons
-    return extras.buttons.map((button: CtrlExtraButton) => {
+  // Extra (modded) buttons, floating vertically besides the controller
+  // diagram (slots 0-3 left column, 4-6 right column, top to bottom).
+  // Selecting one opens the regular button editor; saving writes the whole
+  // extras section.
+  getExtraMappings(side: 'left' | 'right') {
+    const buttons = this.getProfile().extraButtons.buttons
+    const group = side === 'left' ? buttons.slice(0, 4) : buttons.slice(4)
+    return group.map((button: CtrlExtraButton) => {
       let cls = button.isCustom() ? '' : 'inherited'
       if (button === this.selected) cls += ' selected'
       return {

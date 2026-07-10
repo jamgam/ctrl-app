@@ -529,17 +529,19 @@ export class CtrlButton extends CtrlSection {
 // switch to its own binding (the stock role stays passthrough-driven).
 // Entry order matches physical placement, left column top to bottom then
 // right column top to bottom.
+// Naming: EL4 is the top-left extra (E prefix since plain L4 is the stock
+// left back button), numbers decrease downwards; mirrored on the right.
 export const EXTRA_BUTTONS_COUNT = 7
 export const EXTRA_BUTTON_TITLES = [
-  'Extra left 1 (DPad Left switch)',
-  'Extra left 2 (Scroll Down switch)',
-  'Extra left 3 (DPad Up switch)',
-  'Extra left 4 (Select 2 switch)',
-  'Extra right 1 (Scroll Up switch)',
-  'Extra right 2 (DPad Right switch)',
-  'Extra right 3 (Start 2 switch)',
+  'EL4 (DPad Left switch)',
+  'EL3 (Scroll Down switch)',
+  'EL2 (DPad Up switch)',
+  'EL1 (Select 2 switch)',
+  'ER3 (Scroll Up switch)',
+  'ER2 (DPad Right switch)',
+  'ER1 (Start 2 switch)',
 ]
-export const EXTRA_BUTTON_SHORT = ['L·1', 'L·2', 'L·3', 'L·4', 'R·1', 'R·2', 'R·3']
+export const EXTRA_BUTTON_SHORT = ['EL4', 'EL3', 'EL2', 'EL1', 'ER3', 'ER2', 'ER1']
 
 // A single extra button, editable like a regular button (primary actions
 // only). Saving any entry writes the whole bank section.
