@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // Copyright (C) 2023, Input Labs Oy.
 
-import { Component, ViewChild } from '@angular/core'
+import { Component, ViewChild, HostListener } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { ActivatedRoute } from '@angular/router'
 import { WebusbService } from 'services/webusb'
+import { HistoryService } from 'services/history'
 import { ButtonComponent } from 'components/profile/action_preview'
 import { SectionComponent } from 'components/profile/section'
 import { LedComponent, getProfileLed } from 'components/led/led'
 import { CtrlSection, CtrlSectionMeta, CtrlButton, CtrlRotary, CtrlGyroAxis } from 'lib/ctrl'
-import { CtrlExtraButton } from 'lib/ctrl'
+import { CtrlExtraButton, CtrlHome } from 'lib/ctrl'
 import { ActionGroup } from 'lib/actions'
 import { ThumbstickMode, GyroMode } from 'lib/ctrl'
 import { sectionIsGyroAxis, sectionIsHome } from 'lib/ctrl'
@@ -40,10 +41,28 @@ export class ProfileComponent {
   constructor(
     private activatedRoute: ActivatedRoute,
     public webusb: WebusbService,
+    public history: HistoryService,
   ) {
     activatedRoute.data.subscribe((data) => {
       this.profileIndex = data['index']
     })
+  }
+
+  // Undo/redo for binding edits: Ctrl+Z / Ctrl+Shift+Z (or Ctrl+Y).
+  @HostListener('window:keydown', ['$event'])
+  onKeydown(event: KeyboardEvent) {
+    const target = event.target as HTMLElement
+    if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return
+    if (!(event.ctrlKey || event.metaKey)) return
+    if (event.code === 'KeyZ') {
+      event.preventDefault()
+      if (event.shiftKey) this.history.redo()
+      else this.history.undo()
+    }
+    if (event.code === 'KeyY') {
+      event.preventDefault()
+      this.history.redo()
+    }
   }
 
   ngOnInit() {
@@ -55,6 +74,8 @@ export class ProfileComponent {
   }
 
   async init() {
+    // Fetching replaces the live section objects, drop stale history.
+    this.history.clear()
     // Wait until the device is ready.
     await this.device!.waitUntilReady()
     // Fetch profile names, retry if it fails.
@@ -271,8 +292,36 @@ export class ProfileComponent {
     if (event.button !== 1) return
     event.preventDefault()
     this.setSelected(button)
+    this.history.touch(button)
     button.actions[0] = ActionGroup.empty(4)
+    this.history.recordChange(this.profileIndex, button)
     await this.webusb.trySetSection(this.profileIndex, button)
+  }
+
+  // Middle-click on a regular mapping tile: clear its actions and labels.
+  async clearMapping(event: MouseEvent, section: CtrlSection) {
+    if (event.button !== 1) return
+    event.preventDefault()
+    const clearGroups = (count: number) => Array.from(
+      {length: count}, () => ActionGroup.empty(4))
+    if (!(section instanceof CtrlButton
+          || section instanceof CtrlRotary
+          || section instanceof CtrlGyroAxis)) return
+    if (section instanceof CtrlHome) return  // Home is not configurable.
+    this.setSelected(section)
+    this.history.touch(section)
+    if (section instanceof CtrlRotary) {
+      section.actions = clearGroups(5)
+      section.labels = ['', '', '', '', '']
+    } else if (section instanceof CtrlGyroAxis) {
+      section.actions = clearGroups(2)
+      section.labels = ['', '']
+    } else {
+      section.actions = clearGroups(3)
+      section.labels = ['', '', '']
+    }
+    this.history.recordChange(this.profileIndex, section)
+    await this.webusb.trySetSection(this.profileIndex, section)
   }
 
   // Required so change detection is working better is scenarios where the

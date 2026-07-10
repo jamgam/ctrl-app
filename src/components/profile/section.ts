@@ -8,6 +8,7 @@ import { ActionSelectorComponent } from './action_selector'
 import { InputNumberComponent } from 'components/input_number/input_number'
 import { MapperComponent } from 'components/profile/mapper'
 import { WebusbService } from 'services/webusb'
+import { HistoryService } from 'services/history'
 import { Profile } from 'lib/profile'
 import { CtrlSection, CtrlSectionMeta, CtrlButton, CtrlRotary, ConfigIndex, CtrlExtraButton } from 'lib/ctrl'
 import { CtrlThumbstick, CtrlGyro, CtrlGyroAxis, CtrlHome } from 'lib/ctrl'
@@ -57,12 +58,18 @@ export class SectionComponent {
 
   constructor(
     public webusb: WebusbService,
+    public history: HistoryService,
   ) {
     this.afterConstructor()
   }
 
   async afterConstructor() {
     this.globalDeadzone = await this.fetchGlobalDeadzone()
+  }
+
+  ngOnChanges() {
+    // Capture the pre-edit state of the shown section, for undo.
+    this.history.touch(this.section)
   }
 
   ngAfterViewChecked() {
@@ -274,6 +281,7 @@ export class SectionComponent {
   }
 
   save = async () => {
+    this.history.recordChange(this.profileIndex, this.section)
     await this.webusb.trySetSection(this.profileIndex, this.section)
   }
 

@@ -21,6 +21,8 @@ Copyright (C) 2023, Input Labs Oy.
             [ngStyle]='mapping.style'
             (click)='mapping.click()'
             (dblclick)='showDialogPicker()'
+            (auxclick)='clearMapping($event, mapping.section)'
+            (mousedown)='$event.button === 1 && $event.preventDefault()'
             >
             <app-action-preview
                 [ngClass]='getAdditionalClass(mapping.section.sectionIndex)'
