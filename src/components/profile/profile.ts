@@ -238,12 +238,13 @@ export class ProfileComponent {
   }
 
   // Extra (modded) buttons, floating vertically besides the controller
-  // diagram (slots 0-3 left column, 4-6 right column, top to bottom).
+  // diagram (slots 0-3 left column, 4-6 right column). Wire slots run bottom
+  // to top physically, so display order is reversed to put EL1/ER1 on top.
   // Selecting one opens the regular button editor; saving writes the whole
   // extras section.
   getExtraMappings(side: 'left' | 'right') {
     const buttons = this.getProfile().extraButtons.buttons
-    const group = side === 'left' ? buttons.slice(0, 4) : buttons.slice(4)
+    const group = (side === 'left' ? buttons.slice(0, 4) : buttons.slice(4)).reverse()
     return group.map((button: CtrlExtraButton) => {
       let cls = button.isCustom() ? '' : 'inherited'
       if (button === this.selected) cls += ' selected'
