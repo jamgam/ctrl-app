@@ -78,6 +78,12 @@ Copyright (C) 2023, Input Labs Oy.
 <div *ngIf='sectionIsButton() && getSectionAsButton() as button'>
     <h2>{{getSectionTitle()}}</h2>
 
+    <p *ngIf='sectionIsExtraButton()'>
+        Physical mod switch. With no actions assigned it inherits the stock
+        behavior of the switch named above. Assigning actions makes it an
+        independent button (the stock role keeps working via passthrough).
+    </p>
+
     <!-- BUTTON FILTERS -->
     <div class='block' *ngIf='buttonsCanHaveModifiers(button)'>
         <div class='island'>

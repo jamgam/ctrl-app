@@ -2,7 +2,7 @@
 // Copyright (C) 2023, Input Labs Oy.
 
 import { CtrlSectionMeta, CtrlButton, CtrlRotary, CtrlThumbstick, ButtonMode } from 'lib/ctrl'
-import { SectionIndex, CtrlGyro, CtrlGyroAxis, CtrlHome } from 'lib/ctrl'
+import { SectionIndex, CtrlGyro, CtrlGyroAxis, CtrlHome, CtrlExtraButtons } from 'lib/ctrl'
 import { ActionGroup } from 'lib/actions'
 import { HID } from 'lib/hid'
 
@@ -67,6 +67,8 @@ export class Profile {
     public gyroX: CtrlGyroAxis = CtrlGyroAxis.default(),
     public gyroY: CtrlGyroAxis = CtrlGyroAxis.default(),
     public gyroZ: CtrlGyroAxis = CtrlGyroAxis.default(),
+    // Custom Alpakka Lite firmware extension: physical modded buttons.
+    public extraButtons: CtrlExtraButtons = CtrlExtraButtons.empty(),
   ) {
     // Fake home definitions.
     const actions = [

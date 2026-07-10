@@ -12,11 +12,12 @@
     .template
         flex-grow: 1
         display: flex
+        flex-direction: column
+        align-items: center
         flex-shrink: 1
         container-type: size
         width: 100%
         height: 100%
-        // align-items: center
         justify-content: center
         padding: 10px
         padding-top: 20px
@@ -33,8 +34,8 @@
             padding-left: 0% !important
 
         .fixed_aspect
-            height: min(100%, 100cqw * (2600 / 3160))
-            width:  min(100%, 100cqh * (3160 / 2600))
+            height: min(calc(100% - 90px), 100cqw * (2600 / 3160))
+            width:  min(100%, calc((100cqh - 90px) * (3160 / 2600)))
             aspect-ratio: 3160 / 2600
             object-fit: contain
             background-image: url("/assets/profile_template.png")
@@ -46,6 +47,40 @@
             grid-template-columns: 12fr 12fr 3fr 3fr 3fr 3fr 1.5fr 1.5fr 1fr 1.5fr 1.5fr 3fr 3fr 3fr 3fr 12fr 9fr 3fr
             &>div
                 padding-left: 30%
+
+        .extras
+            margin-top: 10px
+            display: flex
+            align-items: stretch
+            gap: 8px
+            .extras-title
+                color: hsl(0deg, 0%, 45%)
+                font-size: 11px
+                text-transform: uppercase
+                line-height: 1.3
+                align-self: center
+                margin-right: 4px
+            .extra
+                display: flex
+                flex-direction: column
+                min-width: 90px
+                max-width: 140px
+                padding: 5px 8px
+                border: 1px solid hsl(0deg, 0%, 30%)
+                border-radius: 5px
+                &.gap
+                    margin-left: 24px
+                &.inherited
+                    border-style: dashed
+                    opacity: 0.75
+                .caption
+                    font-size: 11px
+                    color: hsl(0deg, 0%, 60%)
+                    white-space: nowrap
+                    margin-bottom: 2px
+                    .tag
+                        color: hsl(0deg, 0%, 40%)
+                        margin-left: 4px
 
     .panel
         width: 300px

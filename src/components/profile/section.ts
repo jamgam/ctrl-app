@@ -9,7 +9,7 @@ import { InputNumberComponent } from 'components/input_number/input_number'
 import { MapperComponent } from 'components/profile/mapper'
 import { WebusbService } from 'services/webusb'
 import { Profile } from 'lib/profile'
-import { CtrlSection, CtrlSectionMeta, CtrlButton, CtrlRotary, ConfigIndex } from 'lib/ctrl'
+import { CtrlSection, CtrlSectionMeta, CtrlButton, CtrlRotary, ConfigIndex, CtrlExtraButton } from 'lib/ctrl'
 import { CtrlThumbstick, CtrlGyro, CtrlGyroAxis, CtrlHome } from 'lib/ctrl'
 import { SectionIndex, sectionIsAnalog } from 'lib/ctrl'
 import { ThumbstickMode, GyroMode } from 'lib/ctrl'
@@ -71,6 +71,7 @@ export class SectionComponent {
 
   sectionIsMeta = () => this.section instanceof CtrlSectionMeta
   sectionIsButton = () => this.section instanceof CtrlButton && !(this.section instanceof CtrlHome)
+  sectionIsExtraButton = () => this.section instanceof CtrlExtraButton
   sectionIsHome = () => this.section instanceof CtrlHome
   sectionIsRotary = () => this.section instanceof CtrlRotary
   sectionIsThumbstick = () => this.section instanceof CtrlThumbstick
@@ -103,6 +104,7 @@ export class SectionComponent {
   }
 
   getSectionTitle() {
+    if (this.section instanceof CtrlExtraButton) return this.section.title
     return sectionTitles[this.section.sectionIndex]
   }
 
@@ -233,6 +235,8 @@ export class SectionComponent {
   }
 
   buttonsCanHaveModifiers(button: CtrlButton) {
+    // Extra buttons store primary actions only (no hold/double variants).
+    if (button instanceof CtrlExtraButton) return false
     const sectionName = SectionIndex[button.sectionIndex]
     const is_cardinal = (
       sectionName.endsWith('LEFT') ||

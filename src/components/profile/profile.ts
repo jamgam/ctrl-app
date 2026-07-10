@@ -9,6 +9,7 @@ import { ButtonComponent } from 'components/profile/action_preview'
 import { SectionComponent } from 'components/profile/section'
 import { LedComponent, getProfileLed } from 'components/led/led'
 import { CtrlSection, CtrlSectionMeta, CtrlButton, CtrlRotary, CtrlGyroAxis } from 'lib/ctrl'
+import { CtrlExtraButton } from 'lib/ctrl'
 import { ThumbstickMode, GyroMode } from 'lib/ctrl'
 import { sectionIsGyroAxis, sectionIsHome } from 'lib/ctrl'
 import { SectionIndex } from 'lib/ctrl'
@@ -140,7 +141,8 @@ export class ProfileComponent {
     let cls = 'cls' in pos ? <string>pos.cls : ''
     let analog = false
     if (this.sectionCouldBeAnalog(section)) analog = true
-    if (section.sectionIndex == this.selected?.sectionIndex) cls += ' selected'
+    // Identity comparison, since all extra buttons share one section index.
+    if (section === this.selected) cls += ' selected'
     return {
       section,
       cls,
@@ -233,6 +235,23 @@ export class ProfileComponent {
       ]
     }
     return [...buttons, ...gyroAxis, rotaryUp, rotaryDown, home]
+  }
+
+  // Extra (modded) buttons strip below the controller diagram. Selecting one
+  // opens the regular button editor; saving writes the whole extras section.
+  getExtraMappings() {
+    const extras = this.getProfile().extraButtons
+    return extras.buttons.map((button: CtrlExtraButton) => {
+      let cls = button.isCustom() ? '' : 'inherited'
+      if (button === this.selected) cls += ' selected'
+      return {
+        section: button,
+        cls,
+        label: button.shortName,
+        title: button.title,
+        click: () => this.setSelected(button),
+      }
+    })
   }
 
   // Required so change detection is working better is scenarios where the

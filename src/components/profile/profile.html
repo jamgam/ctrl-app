@@ -70,6 +70,29 @@ Copyright (C) 2023, Input Labs Oy.
             &nbsp;
         </div>
     </div>
+
+    <!-- EXTRA (MODDED) BUTTONS -->
+    <div class='extras'>
+        <div class='extras-title'>Extra<br>buttons</div>
+        <div
+            *ngFor='let mapping of getExtraMappings(); let i = index'
+            class='section extra'
+            [class.gap]='i === 4'
+            [ngClass]='mapping.cls'
+            [title]='mapping.title'
+            (click)='mapping.click()'
+            (dblclick)='showDialogPicker()'
+            >
+            <div class='caption'>
+                {{mapping.label}}
+                <span class='tag'>{{mapping.section.isCustom() ? 'custom' : 'inherits'}}</span>
+            </div>
+            <app-action-preview
+                [section]='mapping.section'
+                [analog]='false'
+            />
+        </div>
+    </div>
 </div>
 
 <div class='panel' *ngIf='webusb.isController()'>

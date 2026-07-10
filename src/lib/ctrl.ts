@@ -112,6 +112,8 @@ export enum SectionIndex {
   MACRO_2,
   MACRO_3,
   MACRO_4,
+  // Custom Alpakka Lite firmware extension (a free profile section slot).
+  EXTRA_BUTTONS = 62,
   HOME = 100,
 }
 
@@ -185,6 +187,10 @@ export function sectionIsHome(section: SectionIndex) {
   return section == SectionIndex.HOME
 }
 
+export function sectionIsExtraButtons(section: SectionIndex) {
+  return section == SectionIndex.EXTRA_BUTTONS
+}
+
 export function sectionIsAnalog(section: SectionIndex) {
   return sectionIsThumbtickDirection(section) || sectionIsGyroAxis(section)
 }
@@ -238,6 +244,7 @@ export class Ctrl {
       else if (sectionIsThumbtick(section)) return CtrlThumbstick.decode(buffer)
       else if (sectionIsGyro(section)) return CtrlGyro.decode(buffer)
       else if (sectionIsGyroAxis(section)) return CtrlGyroAxis.decode(buffer)
+      else if (sectionIsExtraButtons(section)) return CtrlExtraButtons.decode(buffer)
       else return CtrlButton.decode(buffer)
     }
     return false
@@ -513,6 +520,102 @@ export class CtrlButton extends CtrlSection {
       ...string_to_buffer(14, this.labels[1]),
       ...string_to_buffer(14, this.labels[2]),
     ]
+  }
+}
+
+// Custom Alpakka Lite firmware extension: bank of the 7 physical modded
+// buttons, one 8-byte entry each (mode + 4 actions + 3 reserved). Mode 0
+// inherits the stock behavior of the switch; assigning actions diverts the
+// switch to its own binding (the stock role stays passthrough-driven).
+// Entry order matches physical placement, left column top to bottom then
+// right column top to bottom.
+export const EXTRA_BUTTONS_COUNT = 7
+export const EXTRA_BUTTON_TITLES = [
+  'Extra left 1 (DPad Left switch)',
+  'Extra left 2 (Scroll Down switch)',
+  'Extra left 3 (DPad Up switch)',
+  'Extra left 4 (Select 2 switch)',
+  'Extra right 1 (Scroll Up switch)',
+  'Extra right 2 (DPad Right switch)',
+  'Extra right 3 (Start 2 switch)',
+]
+export const EXTRA_BUTTON_SHORT = ['L·1', 'L·2', 'L·3', 'L·4', 'R·1', 'R·2', 'R·3']
+
+// A single extra button, editable like a regular button (primary actions
+// only). Saving any entry writes the whole bank section.
+export class CtrlExtraButton extends CtrlButton {
+  bank!: CtrlExtraButtons
+
+  constructor(
+    profileIndex: number,
+    public slot: number,
+    mode: number,
+    actions: ActionGroup[],
+  ) {
+    super(profileIndex, SectionIndex.EXTRA_BUTTONS, mode, actions)
+  }
+
+  get title() { return EXTRA_BUTTON_TITLES[this.slot] }
+  get shortName() { return EXTRA_BUTTON_SHORT[this.slot] }
+
+  isCustom() {
+    return this.actions[0].asArray().length > 0
+  }
+
+  override payload() {
+    return this.bank.payload()
+  }
+}
+
+export class CtrlExtraButtons extends CtrlSection {
+  constructor(
+    public override profileIndex: number,
+    public buttons: CtrlExtraButton[],
+  ) {
+    super(1, DeviceId.ALPAKKA, MessageType.SECTION_SHARE)
+    this.sectionIndex = SectionIndex.EXTRA_BUTTONS
+    for (const button of this.buttons) button.bank = this
+  }
+
+  static empty(profileIndex = 0) {
+    const buttons = []
+    for (let i = 0; i < EXTRA_BUTTONS_COUNT; i++) {
+      buttons.push(new CtrlExtraButton(profileIndex, i, 0,
+        [ActionGroup.empty(4), ActionGroup.empty(4), ActionGroup.empty(4)]))
+    }
+    return new CtrlExtraButtons(profileIndex, buttons)
+  }
+
+  static override decode(buffer: Uint8Array) {
+    const data = Array.from(buffer)
+    const buttons = []
+    for (let i = 0; i < EXTRA_BUTTONS_COUNT; i++) {
+      const at = 6 + (i * 8)
+      buttons.push(new CtrlExtraButton(
+        data[4],  // ProfileIndex.
+        i,
+        data[at],  // Mode.
+        [
+          new ActionGroup(data.slice(at + 1, at + 5)),
+          ActionGroup.empty(4),
+          ActionGroup.empty(4),
+        ],
+      ))
+    }
+    return new CtrlExtraButtons(data[4], buttons)
+  }
+
+  override payload() {
+    const bytes = [this.profileIndex, this.sectionIndex]
+    for (const button of this.buttons) {
+      // Mode derives from assigned actions: none = inherit stock behavior.
+      bytes.push(
+        button.isCustom() ? ButtonMode.NORMAL : 0,
+        ...button.actions[0].asArrayPadded(),
+        0, 0, 0,  // Reserved.
+      )
+    }
+    return bytes
   }
 }
 
