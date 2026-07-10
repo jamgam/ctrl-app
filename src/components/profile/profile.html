@@ -80,14 +80,13 @@ Copyright (C) 2023, Input Labs Oy.
                 (click)='mapping.click()'
                 (dblclick)='showDialogPicker()'
                 >
-                <div class='caption'>
-                    {{mapping.label}}
-                    <span class='tag' *ngIf='!mapping.section.isCustom()'>inh</span>
+                <div class='caption'>{{mapping.label}}</div>
+                <div class='preview-slot'>
+                    <app-action-preview
+                        [section]='mapping.section'
+                        [analog]='false'
+                    />
                 </div>
-                <app-action-preview
-                    [section]='mapping.section'
-                    [analog]='false'
-                />
             </div>
         </div>
         <div class='extras extras-right'>
@@ -99,14 +98,13 @@ Copyright (C) 2023, Input Labs Oy.
                 (click)='mapping.click()'
                 (dblclick)='showDialogPicker()'
                 >
-                <div class='caption'>
-                    {{mapping.label}}
-                    <span class='tag' *ngIf='!mapping.section.isCustom()'>inh</span>
+                <div class='caption'>{{mapping.label}}</div>
+                <div class='preview-slot'>
+                    <app-action-preview
+                        [section]='mapping.section'
+                        [analog]='false'
+                    />
                 </div>
-                <app-action-preview
-                    [section]='mapping.section'
-                    [analog]='false'
-                />
             </div>
         </div>
     </div>
