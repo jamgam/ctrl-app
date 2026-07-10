@@ -1,0 +1,169 @@
+// SPDX-License-Identifier: GPL-2.0-only
+// Copyright (C) 2026, jamgam fork (custom Alpakka Lite features).
+
+@use '../../styles' as *
+
+:host
+    flex-grow: 1
+    height: 100%
+    display: flex
+    flex-direction: row
+    margin: 0px
+    padding: 0px
+
+    .settings
+        flex-grow: 1
+        height: 100%
+        color: white
+        display: flex
+        flex-direction: column
+        overflow-y: auto
+        margin: 0px
+        padding: 50px
+        padding-top: 20px
+        max-width: 640px
+
+        h2
+            margin-bottom: 40px
+            .active-profile
+                margin-left: 20px
+                font-size: 14px
+                font-weight: normal
+                color: hsl(30deg, 80%, 60%)
+
+        h2.section
+            margin-top: 40px
+            margin-bottom: 20px
+
+        .setting
+            display: flex
+            align-items: flex-start
+            input[type=range]
+                flex-grow: 1
+                margin: 0 10px
+                height: 40px
+                accent-color: hsl(30deg, 80%, 50%)
+            .text
+                display: flex
+                width: 300px
+                min-width: 300px
+                height: 40px
+                margin-bottom: 15px
+                margin-right: 10px
+                padding-left: 16px
+                background-color: hsl(0deg, 0%, 20%)
+                border: 2px solid transparent
+                border-radius: 5px
+                overflow: hidden
+                &.wide
+                    width: auto
+                    flex-grow: 1
+                .name
+                    line-height: 36px
+                    font-size: 16px
+                    font-weight: bold
+                    white-space: nowrap
+                .desc
+                    flex-grow: 1
+                    text-align: start
+                    line-height: 37px
+                    padding-left: 10px
+                    font-size: 14px
+                    color: hsl(0deg, 0%, 50%)
+                    white-space: nowrap
+                    overflow: hidden
+                    text-overflow: ellipsis
+
+        button.record
+            height: 40px
+            padding: 0 20px
+            border: 0
+            border-radius: 5px
+            font-size: 16px
+            font-weight: bold
+            cursor: pointer
+            background-color: hsl(30deg, 80%, 50%)
+            color: black
+            &.armed
+                background-color: hsl(0deg, 70%, 50%)
+                color: white
+
+        .chart
+            width: 100%
+            margin-top: 10px
+            background-color: hsl(0deg, 0%, 13%)
+            border-radius: 5px
+            text
+                fill: hsl(0deg, 0%, 50%)
+                font-size: 10px
+            .grid
+                stroke: hsl(0deg, 0%, 25%)
+                stroke-width: 1
+            .curve
+                fill: none
+                stroke: hsl(30deg, 80%, 50%)
+                stroke-width: 2
+                stroke-linejoin: round
+                stroke-linecap: round
+            .series
+                fill: none
+                stroke: hsl(210deg, 60%, 53%)
+                stroke-width: 1.5
+                stroke-linejoin: round
+            .hist
+                fill: hsl(210deg, 60%, 53%)
+                opacity: 0.5
+            .threshold
+                stroke: hsl(30deg, 80%, 50%)
+                stroke-width: 1.5
+                stroke-dasharray: 3 3
+            .cursor
+                stroke: hsl(0deg, 0%, 40%)
+                stroke-width: 1
+            .dot-curve
+                fill: hsl(30deg, 80%, 50%)
+            .dot-series
+                fill: hsl(210deg, 60%, 53%)
+
+        .readout
+            margin-top: 6px
+            font-size: 13px
+            color: hsl(0deg, 0%, 55%)
+
+        .legend
+            margin-top: 8px
+            display: flex
+            gap: 20px
+            font-size: 12px
+            color: hsl(0deg, 0%, 55%)
+            .swatch
+                display: inline-block
+                width: 14px
+                height: 4px
+                margin-right: 6px
+                vertical-align: middle
+                &.series
+                    background-color: hsl(210deg, 60%, 53%)
+                &.hist
+                    background-color: hsl(210deg, 60%, 53%)
+                    opacity: 0.5
+                    height: 10px
+                &.threshold
+                    background: repeating-linear-gradient(90deg, hsl(30deg, 80%, 50%) 0 3px, transparent 3px 6px)
+
+    ::ng-deep app-input-number
+        width: 140px
+        min-width: 140px
+        height: 40px !important
+        & *
+            height: 40px !important
+            line-height: 40px !important
+        .number
+            border-radius: 5px
+            background-color: black
+        .value, .unit
+            font-size: 15px !important
+            font-weight: normal !important
+            color: white !important
+        .button
+            color: hsl(0deg, 0%, 40%) !important

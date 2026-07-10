@@ -157,6 +157,11 @@ export class WebusbService {
     device.proxyEnabled = device.isProxy()
     // Request device firmware version.
     await device.tryGetStatus()
+    // Request the profile currently active on the controller (custom firmware
+    // extension, keeps itself updated via unsolicited shares afterwards).
+    if (device.isController()) {
+      device.tryGetConfig(ConfigIndex.ACTIVE_PROFILE).catch(() => {})
+    }
     // Force component refresh with dummy redirect technique.
     // (retriggers component ngOnInit).
     const refresh = (url?: string) => {
@@ -205,6 +210,12 @@ export class WebusbService {
   isController() {
     if (!this.selectedDevice) return false
     return this.selectedDevice.isController()
+  }
+
+  // Profile currently active on the controller (-1 if unknown).
+  getActiveProfile() {
+    if (!this.selectedDevice) return -1
+    return this.selectedDevice.activeProfile
   }
 
   isDongle() {

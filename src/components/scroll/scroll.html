@@ -1,0 +1,87 @@
+<!--
+SPDX-License-Identifier: GPL-2.0-only
+Copyright (C) 2026, jamgam fork (custom Alpakka Lite features).
+-->
+
+<div class='settings'>
+    <h2>Scroll buttons</h2>
+
+    <div class='setting'>
+        <div class='text'>
+            <div class='name'>Behavior</div>
+            <div class='desc'>On each press</div>
+        </div>
+        <div class='modes'>
+            <button [class.selected]='mode === 0' (click)='setMode(0)'>Flick</button>
+            <button [class.selected]='mode === 1' (click)='setMode(1)'>Single trigger</button>
+        </div>
+    </div>
+
+    <div class='setting' [class.dimmed]='mode === 1'>
+        <div class='text'>
+            <div class='name'>Notches per flick</div>
+            <div class='desc'>Scroll distance</div>
+        </div>
+        <app-input-number
+            [value]='notches'
+            (update)='notches=$any($event); save()'
+            [unit]="''"
+            [min]='1'
+            [max]='24'
+            [step]='1'
+            [decimals]='0'
+        />
+    </div>
+
+    <div class='setting' [class.dimmed]='mode === 1'>
+        <div class='text'>
+            <div class='name'>Flick time min</div>
+            <div class='desc'>Total duration</div>
+        </div>
+        <app-input-number
+            [value]='minMs'
+            (update)='minMs=$any($event); save()'
+            [unit]="'ms'"
+            [min]='10'
+            [max]='255'
+            [step]='5'
+            [decimals]='0'
+        />
+    </div>
+
+    <div class='setting' [class.dimmed]='mode === 1'>
+        <div class='text'>
+            <div class='name'>Flick time max</div>
+            <div class='desc'>Total duration</div>
+        </div>
+        <app-input-number
+            [value]='maxMs'
+            (update)='maxMs=$any($event); save()'
+            [unit]="'ms'"
+            [min]='10'
+            [max]='255'
+            [step]='5'
+            [decimals]='0'
+        />
+    </div>
+
+    <h2 class='section'>Per-profile override</h2>
+    <div class='hint' *ngIf='!metasLoaded'>Loading profile names...</div>
+
+    <div class='overrides' *ngIf='metasLoaded'>
+        <div class='override' *ngFor='let index of profileIndexes'>
+            <div class='pname' [class.active]='isActive(index)'>
+                {{index}} {{profileName(index)}}
+                <span class='now' *ngIf='isActive(index)'>● active</span>
+            </div>
+            <select
+                [ngModel]='getOverride(index)'
+                (ngModelChange)='setOverride(index, $event)'
+                >
+                <option [ngValue]='0'>{{overrideNames[0]}}</option>
+                <option [ngValue]='1'>{{overrideNames[1]}}</option>
+                <option [ngValue]='2'>{{overrideNames[2]}}</option>
+            </select>
+        </div>
+    </div>
+</div>

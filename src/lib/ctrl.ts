@@ -29,6 +29,7 @@ export enum MessageType {
   STATUS_SET,
   STATUS_SHARE,
   PROFILE_OVERWRITE,
+  GYRO_STREAM,  // Custom Alpakka Lite firmware extension.
 }
 
 export enum ConfigIndex {
@@ -42,6 +43,10 @@ export enum ConfigIndex {
   TOUCH_INVERT_POLARITY,
   GYRO_USER_OFFSET,
   THUMBSTICK_SMOOTH_SAMPLES,
+  // Custom Alpakka Lite firmware extensions.
+  GYRO_ACCEL_CURVE,   // 11
+  SCROLL_BUTTONS,     // 12
+  ACTIVE_PROFILE,     // 13 (share-only, pushed on profile switch).
 }
 
 export enum SectionIndex {
@@ -225,6 +230,7 @@ export class Ctrl {
     if (msgType == MessageType.LOG) return CtrlLog.decode(buffer)
     if (msgType == MessageType.STATUS_SHARE) return CtrlStatusShare.decode(buffer)
     if (msgType == MessageType.CONFIG_SHARE) return CtrlConfigShare.decode(buffer)
+    if (msgType == MessageType.GYRO_STREAM) return CtrlGyroStream.decode(buffer)
     if (msgType == MessageType.SECTION_SHARE) {
       const section = data[5]
       if (sectionIsMeta(section)) return CtrlSectionMeta.decode(buffer)
@@ -327,7 +333,8 @@ export class CtrlConfigShare extends Ctrl {
     return new CtrlConfigShare(
       data[4],  // ConfigIndex.
       data[5],  // Preset.
-      [data[6], data[7], data[8], data[9], data[10]],  // Values.
+      // Values. (6 bytes since the GYRO_ACCEL_CURVE firmware extension).
+      [data[6], data[7], data[8], data[9], data[10], data[11]],
     )
   }
 
@@ -392,6 +399,11 @@ export class CtrlSectionMeta extends CtrlSection {
     public versionMajor: number,
     public versionMinor: number,
     public versionPatch: number,
+    // Custom Alpakka Lite firmware extension: scroll buttons behavior while
+    // this profile is active (0=use global config, 1=single trigger, 2=flick).
+    // Must round-trip through payload() or saving the meta section (e.g. a
+    // profile rename) would zero it in the firmware.
+    public scrollOverride: number = 0,
   ) {
     const payload = [profileIndex, sectionIndex, name]
     super(1, DeviceId.ALPAKKA, MessageType.SECTION_SHARE)
@@ -407,6 +419,7 @@ export class CtrlSectionMeta extends CtrlSection {
       data[31],  // Version major.
       data[32],  // Version minor.
       data[33],  // Version patch.
+      data[34],  // Scroll buttons override.
     )
   }
 
@@ -419,6 +432,7 @@ export class CtrlSectionMeta extends CtrlSection {
       this.versionMajor,
       this.versionMinor,
       this.versionPatch,
+      this.scrollOverride,
     ]
   }
 
@@ -428,6 +442,7 @@ export class CtrlSectionMeta extends CtrlSection {
     this.versionMajor = meta.versionMajor
     this.versionMinor = meta.versionMinor
     this.versionPatch = meta.versionPatch
+    this.scrollOverride = meta.scrollOverride
   }
 }
 
@@ -724,6 +739,47 @@ export class CtrlGyroAxis extends CtrlSection {
       ...string_to_buffer(14, this.labels[1]),
       this.sens,
     ]
+  }
+}
+
+// Custom Alpakka Lite firmware extension: batched gyro samples streamed while
+// recording is active (see PROC_GYRO_STREAM_START/STOP). Payload: uint32 LE
+// firmware timestamp (µs), uint8 sample count, then 7-byte samples of
+// uint16 LE speed (dps x10), uint8 curve multiplier (x10), int16 LE mouse
+// output x/y (x100). Sample timestamps are back-filled from the packet
+// timestamp assuming a 1 kHz tick.
+export interface GyroSample {
+  t: number      // µs, relative to the packet timestamp.
+  speed: number  // dps.
+  mult: number   // Accel curve multiplier applied.
+  x: number      // Mouse output x.
+  y: number      // Mouse output y.
+}
+
+export class CtrlGyroStream extends Ctrl {
+  constructor(
+    public time: number,
+    public samples: GyroSample[],
+  ) {
+    super(1, DeviceId.ALPAKKA, MessageType.GYRO_STREAM)
+  }
+
+  static override decode(buffer: Uint8Array) {
+    const view = new DataView(buffer.buffer, buffer.byteOffset)
+    const time = view.getUint32(4, true)
+    const count = Math.min(view.getUint8(8), 7)
+    const samples: GyroSample[] = []
+    for (let i = 0; i < count; i++) {
+      const at = 9 + (i * 7)
+      samples.push({
+        t: time + (i * 1000),
+        speed: view.getUint16(at, true) / 10,
+        mult: view.getUint8(at + 2) / 10,
+        x: view.getInt16(at + 3, true) / 100,
+        y: view.getInt16(at + 5, true) / 100,
+      })
+    }
+    return new CtrlGyroStream(time, samples)
   }
 }
 

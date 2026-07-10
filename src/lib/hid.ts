@@ -261,6 +261,10 @@ export enum HID {
   PROC_IGNORE_LED_WARNINGS,
   PROC_SLEEP,
   PROC_PAIR,
+
+  // Custom Alpakka Lite firmware extensions (PROC_INDEX + 50/51).
+  PROC_GYRO_STREAM_START = 252,
+  PROC_GYRO_STREAM_STOP = 253,
 }
 
 export function isMouseAxis(action: HID) {

@@ -1,0 +1,176 @@
+<!--
+SPDX-License-Identifier: GPL-2.0-only
+Copyright (C) 2026, jamgam fork (custom Alpakka Lite features).
+-->
+
+<div class='settings'>
+    <h2>
+        Gyro acceleration
+        <span class='active-profile' *ngIf='webusb.getActiveProfile() >= 0'>
+            Active profile: {{activeProfileLabel()}}
+        </span>
+    </h2>
+
+    <div class='setting'>
+        <div class='text'>
+            <div class='name'>Acceleration curve</div>
+            <div class='desc'>Speed-dependent sensitivity</div>
+        </div>
+        <app-input-toggle
+            [value]='enabled'
+            (update)='enabled=$event; save()'
+        />
+    </div>
+
+    <div class='setting'>
+        <div class='text'>
+            <div class='name'>Slow multiplier</div>
+            <div class='desc'>Below slow threshold</div>
+        </div>
+        <input type='range' min='1' max='80' step='1'
+            [(ngModel)]='slow' (ngModelChange)='save()'>
+        <app-input-number
+            [value]='slow'
+            (update)='slow=$any($event); save()'
+            [unit]="'×'"
+            [min]='0.1'
+            [max]='25.5'
+            [step]='0.1'
+            [factor]='0.1'
+            [decimals]='1'
+        />
+    </div>
+
+    <div class='setting'>
+        <div class='text'>
+            <div class='name'>Fast multiplier</div>
+            <div class='desc'>Above fast threshold</div>
+        </div>
+        <input type='range' min='1' max='80' step='1'
+            [(ngModel)]='fast' (ngModelChange)='save()'>
+        <app-input-number
+            [value]='fast'
+            (update)='fast=$any($event); save()'
+            [unit]="'×'"
+            [min]='0.1'
+            [max]='25.5'
+            [step]='0.1'
+            [factor]='0.1'
+            [decimals]='1'
+        />
+    </div>
+
+    <div class='setting'>
+        <div class='text'>
+            <div class='name'>Slow threshold</div>
+            <div class='desc'>Ramp starts</div>
+        </div>
+        <input type='range' min='0' max='50000' step='100'
+            [(ngModel)]='tSlow' (ngModelChange)='save()'>
+        <app-input-number
+            [value]='tSlow'
+            (update)='tSlow=$any($event); save()'
+            [unit]="'°/s'"
+            [min]='0'
+            [max]='655.35'
+            [step]='1'
+            [factor]='0.01'
+            [decimals]='2'
+        />
+    </div>
+
+    <div class='setting'>
+        <div class='text'>
+            <div class='name'>Fast threshold</div>
+            <div class='desc'>Ramp ends</div>
+        </div>
+        <input type='range' min='0' max='50000' step='100'
+            [(ngModel)]='tFast' (ngModelChange)='save()'>
+        <app-input-number
+            [value]='tFast'
+            (update)='tFast=$any($event); save()'
+            [unit]="'°/s'"
+            [min]='0'
+            [max]='655.35'
+            [step]='1'
+            [factor]='0.01'
+            [decimals]='2'
+        />
+    </div>
+
+    <svg class='chart' viewBox='0 0 480 185'
+        (mousemove)='onCurveMove($event)'
+        (mouseleave)='onCurveLeave()'
+        >
+        <rect *ngFor='let bar of histRects' class='hist'
+            [attr.x]='bar.x' [attr.y]='bar.y'
+            [attr.width]='bar.w' [attr.height]='bar.h'></rect>
+        <ng-container *ngFor='let line of curveGrid'>
+            <line class='grid' [attr.x1]='PLOT.left' [attr.x2]='PLOT.right'
+                [attr.y1]='line.y' [attr.y2]='line.y'></line>
+            <text [attr.x]='PLOT.left - 6' [attr.y]='line.y + 3'
+                text-anchor='end'>{{line.label}}</text>
+        </ng-container>
+        <text *ngFor='let dps of [0, 250, 500]' [attr.x]='xTickAt(dps)'
+            [attr.y]='PLOT.bottom + 16' text-anchor='middle'>{{dps}}°/s</text>
+        <path class='curve' [attr.d]='curvePath'
+            [attr.opacity]='enabled ? 1 : 0.35'></path>
+        <line *ngIf='curveCursorX >= 0' class='cursor'
+            [attr.x1]='curveCursorX' [attr.x2]='curveCursorX'
+            [attr.y1]='PLOT.top' [attr.y2]='PLOT.bottom'></line>
+        <circle *ngIf='curveCursorX >= 0' class='dot-curve' r='4'
+            [attr.cx]='curveCursorX' [attr.cy]='curveDotY'></circle>
+    </svg>
+    <div class='readout'>{{curveReadout}}</div>
+
+    <h2 class='section'>Recording</h2>
+
+    <div class='setting'>
+        <div class='text'>
+            <div class='name'>Gyro recording</div>
+            <div class='desc'>{{recStatus}}</div>
+        </div>
+        <button class='record' [class.armed]='recording' (click)='toggleRecording()'>
+            {{recording ? '■ Stop' : '● Record'}}
+        </button>
+    </div>
+
+    <div class='setting' *ngIf='recSummary'>
+        <div class='text wide'>
+            <div class='name'>Last recording</div>
+            <div class='desc'>{{recSummary}}</div>
+        </div>
+        <button class='record' (click)='exportCsv()'>Export CSV</button>
+    </div>
+
+    <ng-container *ngIf='tsAvailable'>
+        <svg class='chart' viewBox='0 0 480 185'
+            (mousemove)='onTsMove($event)'
+            (mouseleave)='onTsLeave()'
+            >
+            <ng-container *ngFor='let line of tsGrid'>
+                <line class='grid' [attr.x1]='TSER.left' [attr.x2]='TSER.right'
+                    [attr.y1]='line.y' [attr.y2]='line.y'></line>
+                <text [attr.x]='TSER.left - 6' [attr.y]='line.y + 3'
+                    text-anchor='end'>{{line.label}}</text>
+            </ng-container>
+            <text *ngFor='let tick of tsTimeTicks' [attr.x]='tick.x'
+                [attr.y]='TSER.bottom + 16' text-anchor='middle'>{{tick.label}}</text>
+            <line *ngFor='let y of tsThresholds' class='threshold'
+                [attr.x1]='TSER.left' [attr.x2]='TSER.right'
+                [attr.y1]='y' [attr.y2]='y'></line>
+            <path class='series' [attr.d]='tsPath'></path>
+            <line *ngIf='tsCursorX >= 0' class='cursor'
+                [attr.x1]='tsCursorX' [attr.x2]='tsCursorX'
+                [attr.y1]='TSER.top' [attr.y2]='TSER.bottom'></line>
+            <circle *ngIf='tsDotY >= 0' class='dot-series' r='4'
+                [attr.cx]='tsCursorX' [attr.cy]='tsDotY'></circle>
+        </svg>
+        <div class='readout'>{{tsReadout}}</div>
+        <div class='legend'>
+            <span><span class='swatch series'></span> recorded speed (peak per slice)</span>
+            <span><span class='swatch hist'></span> time at speed (behind curve)</span>
+            <span><span class='swatch threshold'></span> curve thresholds</span>
+        </div>
+    </ng-container>
+</div>

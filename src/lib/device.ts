@@ -25,6 +25,7 @@ import {
   CtrlStatusSet,
   CtrlStatusShare,
   CtrlProfileOverwrite,
+  CtrlGyroStream,
 } from 'lib/ctrl'
 
 const ADDR_IN = 3
@@ -53,6 +54,10 @@ export class Device {
   pendingProfile?: AsyncSubject<CtrlSection>
   profiles: Profiles
   tunes: Tunes
+  // Custom firmware extensions: profile currently active on the controller
+  // (pushed by the firmware on every switch), and gyro recording sink.
+  activeProfile = -1
+  gyroStreamListener?: (stream: CtrlGyroStream) => void
 
   constructor(usbDevice: USBDevice) {
     this.usbDevice = usbDevice
@@ -109,7 +114,14 @@ export class Device {
           this.handleCtrlStatusShare(ctrl)
         }
       }
+      if (ctrl instanceof CtrlGyroStream) {
+        if (this.gyroStreamListener) this.gyroStreamListener(ctrl)
+      }
       if (ctrl instanceof CtrlConfigShare) {
+        // Track the active profile whether the share was requested or pushed.
+        if (ctrl.cfgIndex == ConfigIndex.ACTIVE_PROFILE) {
+          this.activeProfile = ctrl.preset
+        }
         if (this.pendingConfig) {
           this.pendingConfig.next(ctrl)
           this.pendingConfig.complete()
@@ -214,6 +226,9 @@ export class Device {
   }
 
   handleCtrlConfigShare(ctrl: CtrlConfigShare) {
+    // Active profile pushes are frequent and already handled in listen(),
+    // they do not invalidate tune presets.
+    if (ctrl.cfgIndex == ConfigIndex.ACTIVE_PROFILE) return
     // If there is no pending receiver for the config change we assume it is a
     // change made on the controller via shortcuts.
     // TODO: Investigate why the ctrl object does not return real data that

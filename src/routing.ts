@@ -6,6 +6,8 @@ import { LogsComponent } from 'components/logs/logs'
 import { WipComponent } from 'components/wip/wip'
 import { TuneComponent } from 'components/tune/tune'
 import { SettingsComponent } from 'components/settings/settings'
+import { GyroAccelComponent } from 'components/gyro_accel/gyro_accel'
+import { ScrollComponent } from 'components/scroll/scroll'
 import { ProfileComponent } from 'components/profile/profile'
 import { HelpWindowsComponent } from 'components/help/help_windows'
 import { HelpLinuxComponent } from 'components/help/help_linux'
@@ -19,6 +21,8 @@ export const routes: Routes = [
   {path: 'settings/deadzone', component: TuneComponent, data: {mode:'deadzone'}},
   {path: 'settings/touch_sens', component: TuneComponent, data: {mode:'touch_sens'}},
   {path: 'settings/mouse_sens', component: TuneComponent, data: {mode:'mouse_sens'}},
+  {path: 'settings/gyro_accel', component: GyroAccelComponent},
+  {path: 'settings/scroll', component: ScrollComponent},
   {path: 'settings/advanced', component: SettingsComponent},
   {path: 'settings/app', component: WipComponent},
   {path: 'settings/tester', component: WipComponent},

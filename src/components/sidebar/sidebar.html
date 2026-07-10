@@ -28,6 +28,14 @@ Copyright (C) 2023, Input Labs Oy.
         <span class='material'>adjust</span>
         <div>Thumbstick deadzone</div>
     </a>
+    <a routerLink='settings/gyro_accel' routerLinkActive='active' *ngIf='webusb.isController()'>
+        <span class='material'>speed</span>
+        <div>Gyro acceleration</div>
+    </a>
+    <a routerLink='settings/scroll' routerLinkActive='active' *ngIf='webusb.isController()'>
+        <span class='material'>swap_vert</span>
+        <div>Scroll buttons</div>
+    </a>
     <a routerLink='settings/advanced' routerLinkActive='active' *ngIf='webusb.isController()'>
         <span class='material'>tune</span>
         <div>Advanced</div>
