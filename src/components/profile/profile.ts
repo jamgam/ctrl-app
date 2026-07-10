@@ -10,6 +10,7 @@ import { SectionComponent } from 'components/profile/section'
 import { LedComponent, getProfileLed } from 'components/led/led'
 import { CtrlSection, CtrlSectionMeta, CtrlButton, CtrlRotary, CtrlGyroAxis } from 'lib/ctrl'
 import { CtrlExtraButton } from 'lib/ctrl'
+import { ActionGroup } from 'lib/actions'
 import { ThumbstickMode, GyroMode } from 'lib/ctrl'
 import { sectionIsGyroAxis, sectionIsHome } from 'lib/ctrl'
 import { SectionIndex } from 'lib/ctrl'
@@ -256,6 +257,22 @@ export class ProfileComponent {
         click: () => this.setSelected(button),
       }
     })
+  }
+
+  // Stable identity for the extras ngFor: without it the tiles are recreated
+  // on every change detection pass (getExtraMappings returns fresh objects),
+  // which eats the second click of a double-click.
+  trackExtraBySlot(index: number, mapping: any): number {
+    return mapping.section.slot
+  }
+
+  // Middle-click on an extra tile: clear the binding (back to inherit).
+  async clearExtra(event: MouseEvent, button: CtrlExtraButton) {
+    if (event.button !== 1) return
+    event.preventDefault()
+    this.setSelected(button)
+    button.actions[0] = ActionGroup.empty(4)
+    await this.webusb.trySetSection(this.profileIndex, button)
   }
 
   // Required so change detection is working better is scenarios where the

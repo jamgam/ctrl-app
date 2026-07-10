@@ -73,12 +73,14 @@ Copyright (C) 2023, Input Labs Oy.
         <!-- EXTRA (MODDED) BUTTONS -->
         <div class='extras extras-left'>
             <div
-                *ngFor='let mapping of getExtraMappings("left")'
+                *ngFor='let mapping of getExtraMappings("left"); trackBy: trackExtraBySlot'
                 class='section extra'
                 [ngClass]='mapping.cls'
                 [title]='mapping.title'
                 (click)='mapping.click()'
                 (dblclick)='showDialogPicker()'
+                (auxclick)='clearExtra($event, mapping.section)'
+                (mousedown)='$event.button === 1 && $event.preventDefault()'
                 >
                 <div class='caption'>{{mapping.label}}</div>
                 <div class='preview-slot'>
@@ -91,12 +93,14 @@ Copyright (C) 2023, Input Labs Oy.
         </div>
         <div class='extras extras-right'>
             <div
-                *ngFor='let mapping of getExtraMappings("right")'
+                *ngFor='let mapping of getExtraMappings("right"); trackBy: trackExtraBySlot'
                 class='section extra'
                 [ngClass]='mapping.cls'
                 [title]='mapping.title'
                 (click)='mapping.click()'
                 (dblclick)='showDialogPicker()'
+                (auxclick)='clearExtra($event, mapping.section)'
+                (mousedown)='$event.button === 1 && $event.preventDefault()'
                 >
                 <div class='caption'>{{mapping.label}}</div>
                 <div class='preview-slot'>
