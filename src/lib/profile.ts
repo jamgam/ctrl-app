@@ -87,8 +87,13 @@ export class Profile {
   }
 
   getSections() {
-    return Object.values(this)
+    const sections = Object.values(this)
       .filter((value) => value.sectionIndex!=SectionIndex.HOME)
+    // The extra buttons aux lives inside the bank object, so it is not a
+    // Profile field of its own; append it so blob exports round-trip the
+    // hold/double actions.
+    sections.push(this.extraButtons.aux)
+    return sections
   }
 
   thumbstickHasAxis(thumbstick: CtrlThumbstick, isAxisFunc: (x:HID)=>boolean) {

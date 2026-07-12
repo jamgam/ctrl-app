@@ -112,8 +112,10 @@ export enum SectionIndex {
   MACRO_2,
   MACRO_3,
   MACRO_4,
-  // Custom Alpakka Lite firmware extension (a free profile section slot).
+  // Custom Alpakka Lite firmware extension (free profile section slots).
   EXTRA_BUTTONS = 62,
+  // Hold/double action groups for the extra buttons (companion section).
+  EXTRA_BUTTONS_AUX = 63,
   HOME = 100,
 }
 
@@ -198,6 +200,10 @@ export function sectionIsExtraButtons(section: SectionIndex) {
   return section == SectionIndex.EXTRA_BUTTONS
 }
 
+export function sectionIsExtraButtonsAux(section: SectionIndex) {
+  return section == SectionIndex.EXTRA_BUTTONS_AUX
+}
+
 export function sectionIsAnalog(section: SectionIndex) {
   return sectionIsThumbtickDirection(section) || sectionIsGyroAxis(section)
 }
@@ -252,6 +258,7 @@ export class Ctrl {
       else if (sectionIsGyro(section)) return CtrlGyro.decode(buffer)
       else if (sectionIsGyroAxis(section)) return CtrlGyroAxis.decode(buffer)
       else if (sectionIsExtraButtons(section)) return CtrlExtraButtons.decode(buffer)
+      else if (sectionIsExtraButtonsAux(section)) return CtrlExtraButtonsAux.decode(buffer)
       else return CtrlButton.decode(buffer)
     }
     return false
@@ -531,9 +538,13 @@ export class CtrlButton extends CtrlSection {
 }
 
 // Custom Alpakka Lite firmware extension: bank of the 7 physical modded
-// buttons, one 8-byte entry each (mode + 4 actions + 3 reserved). Mode 0
-// inherits the stock behavior of the switch; assigning actions diverts the
-// switch to its own binding (the stock role stays passthrough-driven).
+// buttons, one 8-byte entry each (mode + 4 primary actions + 3 reserved).
+// Mode 0 inherits the stock behavior of the switch; assigning actions
+// diverts the switch to its own binding (the stock role stays
+// passthrough-driven), with the mode byte carrying regular ButtonMode bits
+// (hold, double, etc.). Hold/double action groups travel in the companion
+// EXTRA_BUTTONS_AUX section (8 bytes per slot: 4 secondary + 4 terciary),
+// since the bank section has no room for them.
 // Entry order matches physical placement, left column top to bottom then
 // right column top to bottom.
 // Naming: EL1 is the top-left extra, numbers increase downwards; mirrored
@@ -552,8 +563,9 @@ export const EXTRA_BUTTON_TITLES = [
 ]
 export const EXTRA_BUTTON_SHORT = ['EL4', 'EL3', 'EL2', 'EL1', 'ER3', 'ER2', 'ER1']
 
-// A single extra button, editable like a regular button (primary actions
-// only). Saving any entry writes the whole bank section.
+// A single extra button, editable like a regular button (hold/double/etc.
+// included). Saving any entry writes the whole bank section (plus its aux
+// companion, handled by the webusb service).
 export class CtrlExtraButton extends CtrlButton {
   bank!: CtrlExtraButtons
 
@@ -570,7 +582,7 @@ export class CtrlExtraButton extends CtrlButton {
   get shortName() { return EXTRA_BUTTON_SHORT[this.slot] }
 
   isCustom() {
-    return this.actions[0].asArray().length > 0
+    return this.actions.some((group) => group.asArray().length > 0)
   }
 
   override payload() {
@@ -579,6 +591,10 @@ export class CtrlExtraButton extends CtrlButton {
 }
 
 export class CtrlExtraButtons extends CtrlSection {
+  // Companion section carrying the hold/double action groups; kept linked so
+  // its payload always reflects the live bank state.
+  aux: CtrlExtraButtonsAux
+
   constructor(
     public override profileIndex: number,
     public buttons: CtrlExtraButton[],
@@ -586,6 +602,8 @@ export class CtrlExtraButtons extends CtrlSection {
     super(1, DeviceId.ALPAKKA, MessageType.SECTION_SHARE)
     this.sectionIndex = SectionIndex.EXTRA_BUTTONS
     for (const button of this.buttons) button.bank = this
+    this.aux = new CtrlExtraButtonsAux(profileIndex)
+    this.aux.bank = this
   }
 
   static empty(profileIndex = 0) {
@@ -616,15 +634,69 @@ export class CtrlExtraButtons extends CtrlSection {
     return new CtrlExtraButtons(data[4], buttons)
   }
 
+  // Merge a fetched/decoded aux section into the bank's buttons.
+  applyAux(aux: CtrlExtraButtonsAux) {
+    for (const [i, button] of this.buttons.entries()) {
+      const groups = aux.groups[i]
+      if (!groups) continue
+      button.actions[1] = groups[0]
+      button.actions[2] = groups[1]
+    }
+  }
+
   override payload() {
     const bytes = [this.profileIndex, this.sectionIndex]
     for (const button of this.buttons) {
-      // Mode derives from assigned actions: none = inherit stock behavior.
+      // No actions in any group = inherit stock behavior, otherwise the mode
+      // carries the regular ButtonMode bits (hold, double, etc.).
       bytes.push(
-        button.isCustom() ? ButtonMode.NORMAL : 0,
+        button.isCustom() ? button.mode() : 0,
         ...button.actions[0].asArrayPadded(),
         0, 0, 0,  // Reserved.
       )
+    }
+    return bytes
+  }
+}
+
+// Companion section to CtrlExtraButtons: secondary (hold) and terciary
+// (double press) action groups, 8 bytes per slot in the same order as the
+// bank. Standalone instances (decoded from the device or a profile blob)
+// carry their own groups; instances linked to a bank derive the payload from
+// the bank's live buttons instead.
+export class CtrlExtraButtonsAux extends CtrlSection {
+  bank?: CtrlExtraButtons
+
+  constructor(
+    public override profileIndex: number,
+    // groups[slot] = [secondary ActionGroup, terciary ActionGroup].
+    public groups: ActionGroup[][] = [],
+  ) {
+    super(1, DeviceId.ALPAKKA, MessageType.SECTION_SHARE)
+    this.sectionIndex = SectionIndex.EXTRA_BUTTONS_AUX
+  }
+
+  static override decode(buffer: Uint8Array) {
+    const data = Array.from(buffer)
+    const groups = []
+    for (let i = 0; i < EXTRA_BUTTONS_COUNT; i++) {
+      const at = 6 + (i * 8)
+      groups.push([
+        new ActionGroup(data.slice(at, at + 4)),
+        new ActionGroup(data.slice(at + 4, at + 8)),
+      ])
+    }
+    return new CtrlExtraButtonsAux(data[4], groups)
+  }
+
+  override payload() {
+    const groups = this.bank
+      ? this.bank.buttons.map((button) => [button.actions[1], button.actions[2]])
+      : this.groups
+    const bytes = [this.profileIndex, this.sectionIndex]
+    for (let i = 0; i < EXTRA_BUTTONS_COUNT; i++) {
+      const [secondary, terciary] = groups[i] ?? [ActionGroup.empty(4), ActionGroup.empty(4)]
+      bytes.push(...secondary.asArrayPadded(), ...terciary.asArrayPadded())
     }
     return bytes
   }

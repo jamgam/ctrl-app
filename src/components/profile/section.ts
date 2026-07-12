@@ -243,8 +243,9 @@ export class SectionComponent {
   }
 
   buttonsCanHaveModifiers(button: CtrlButton) {
-    // Extra buttons store primary actions only (no hold/double variants).
-    if (button instanceof CtrlExtraButton) return false
+    // Extra buttons carry their hold/double actions in the aux companion
+    // section, so they get the full modifier set like regular buttons.
+    if (button instanceof CtrlExtraButton) return true
     const sectionName = SectionIndex[button.sectionIndex]
     const is_cardinal = (
       sectionName.endsWith('LEFT') ||

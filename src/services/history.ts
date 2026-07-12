@@ -3,7 +3,7 @@
 
 import { Injectable } from '@angular/core'
 import { WebusbService } from 'services/webusb'
-import { Ctrl, CtrlSection, CtrlExtraButton, CtrlExtraButtons, MessageType } from 'lib/ctrl'
+import { Ctrl, CtrlSection, CtrlExtraButton, CtrlExtraButtons, CtrlExtraButtonsAux, MessageType } from 'lib/ctrl'
 
 // Undo/redo for profile section edits. Every save records a before/after
 // snapshot of the section wire payload; undo/redo restores the snapshot onto
@@ -39,6 +39,15 @@ export class HistoryService {
     return section
   }
 
+  // Wire-payload snapshot of a section. Extra button banks append their aux
+  // companion payload (hold/double actions), so both round-trip through
+  // undo/redo. Each payload is a fixed 58 bytes, so restore() splits there.
+  private snapshot(section: CtrlSection): number[] {
+    const payload = section.payload()
+    if (section instanceof CtrlExtraButtons) payload.push(...section.aux.payload())
+    return payload
+  }
+
   clear() {
     this.undoStack = []
     this.redoStack = []
@@ -49,7 +58,7 @@ export class HistoryService {
   touch(section: CtrlSection) {
     const target = this.normalize(section)
     if (!this.baselines.has(target)) {
-      this.baselines.set(target, target.payload())
+      this.baselines.set(target, this.snapshot(target))
     }
   }
 
@@ -57,7 +66,7 @@ export class HistoryService {
   // baseline to the current state.
   recordChange(profileIndex: number, section: CtrlSection) {
     const target = this.normalize(section)
-    const after = target.payload()
+    const after = this.snapshot(target)
     const before = this.baselines.get(target) ?? after
     this.baselines.set(target, after)
     if (JSON.stringify(before) === JSON.stringify(after)) return
@@ -92,23 +101,41 @@ export class HistoryService {
   // Write a payload snapshot back onto the live section object, by decoding
   // it as if it came from the device and copying the data fields over.
   private restore(section: CtrlSection, payload: number[]) {
+    if (section instanceof CtrlExtraButtons) {
+      // Snapshot is bank payload + aux payload, 58 bytes each. Keep the live
+      // view objects (selection and editor point at them), only their action
+      // groups and mode flags change.
+      const bank = this.decodePayload(payload.slice(0, 58)) as CtrlExtraButtons
+      const aux = this.decodePayload(payload.slice(58)) as CtrlExtraButtonsAux
+      if (!bank) return
+      for (const [i, view] of section.buttons.entries()) {
+        const decoded = bank.buttons[i]
+        view.actions = decoded.actions
+        if (aux && aux.groups[i]) {
+          view.actions[1] = aux.groups[i][0]
+          view.actions[2] = aux.groups[i][1]
+        }
+        view.hold = decoded.hold
+        view.double = decoded.double
+        view.immediate = decoded.immediate
+        view.long = decoded.long
+        view.sticky = decoded.sticky
+      }
+      return
+    }
+    const decoded = this.decodePayload(payload) as any
+    if (!decoded) return
+    const fields = {...decoded}
+    delete fields.protocolFlags
+    delete fields.deviceId
+    delete fields.messageType
+    Object.assign(section, fields)
+  }
+
+  private decodePayload(payload: number[]) {
     const buffer = new Uint8Array(64)
     buffer[2] = MessageType.SECTION_SHARE
     for (const [i, byte] of payload.entries()) buffer[4 + i] = byte
-    const decoded = Ctrl.decode(buffer) as any
-    if (!decoded) return
-    if (section instanceof CtrlExtraButtons) {
-      // Keep the live view objects (selection and editor point at them),
-      // only their action groups change.
-      for (const [i, view] of section.buttons.entries()) {
-        view.actions = decoded.buttons[i].actions
-      }
-    } else {
-      const fields = {...decoded}
-      delete fields.protocolFlags
-      delete fields.deviceId
-      delete fields.messageType
-      Object.assign(section, fields)
-    }
+    return Ctrl.decode(buffer)
   }
 }

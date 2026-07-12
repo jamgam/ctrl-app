@@ -26,6 +26,8 @@ import {
   CtrlStatusShare,
   CtrlProfileOverwrite,
   CtrlGyroStream,
+  CtrlExtraButton,
+  CtrlExtraButtons,
 } from 'lib/ctrl'
 
 const ADDR_IN = 3
@@ -413,7 +415,13 @@ export class Device {
   }
 
   async trySetSection(profileIndex: number, section: CtrlSection) {
-    return this.tryFetch(() => this.setSection(profileIndex, section))
+    const result = await this.tryFetch(() => this.setSection(profileIndex, section))
+    // Extra button hold/double actions travel in a companion aux section, so
+    // every bank write is followed by the matching aux write.
+    const bank = section instanceof CtrlExtraButton ? section.bank
+      : section instanceof CtrlExtraButtons ? section : undefined
+    if (bank) await this.tryFetch(() => this.setSection(profileIndex, bank.aux))
+    return result
   }
 
 }

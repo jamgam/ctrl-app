@@ -3,7 +3,7 @@
 
 /// <reference types="w3c-web-usb" />
 
-import { MessageType, SectionIndex, CtrlGyro, CtrlGyroAxis, CtrlExtraButtons } from 'lib/ctrl'
+import { MessageType, SectionIndex, CtrlGyro, CtrlGyroAxis, CtrlExtraButtons, CtrlExtraButtonsAux } from 'lib/ctrl'
 import { Device } from 'lib/device'
 import { Profile } from 'lib/profile'
 import {
@@ -118,9 +118,13 @@ export class Profiles {
     profile.gyroX = await this.device.tryGetSection(profileIndex, SectionIndex.GYRO_X) as CtrlGyroAxis
     profile.gyroY = await this.device.tryGetSection(profileIndex, SectionIndex.GYRO_Y) as CtrlGyroAxis
     profile.gyroZ = await this.device.tryGetSection(profileIndex, SectionIndex.GYRO_Z) as CtrlGyroAxis
-    // Extra (modded) buttons, custom firmware extension.
+    // Extra (modded) buttons, custom firmware extension. The aux companion
+    // section carries their hold/double action groups.
     profile.extraButtons = await this.device.tryGetSection(
       profileIndex, SectionIndex.EXTRA_BUTTONS) as CtrlExtraButtons
+    const extraAux = await this.device.tryGetSection(
+      profileIndex, SectionIndex.EXTRA_BUTTONS_AUX) as CtrlExtraButtonsAux
+    profile.extraButtons.applyAux(extraAux)
   }
 
   getProfile(profileIndex: number) {
