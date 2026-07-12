@@ -293,7 +293,8 @@ export class ProfileComponent {
     event.preventDefault()
     this.setSelected(button)
     this.history.touch(button)
-    button.actions[0] = ActionGroup.empty(4)
+    button.actions = [ActionGroup.empty(4), ActionGroup.empty(4), ActionGroup.empty(4)]
+    button.hold = button.double = button.immediate = button.long = button.sticky = false
     this.history.recordChange(this.profileIndex, button)
     await this.webusb.trySetSection(this.profileIndex, button)
   }
