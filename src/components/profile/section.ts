@@ -13,7 +13,7 @@ import { Profile } from 'lib/profile'
 import { CtrlSection, CtrlSectionMeta, CtrlButton, CtrlRotary, ConfigIndex, CtrlExtraButton } from 'lib/ctrl'
 import { CtrlThumbstick, CtrlGyro, CtrlGyroAxis, CtrlHome } from 'lib/ctrl'
 import { SectionIndex, sectionIsAnalog } from 'lib/ctrl'
-import { ThumbstickMode, GyroMode } from 'lib/ctrl'
+import { ThumbstickMode, GyroMode, GyroSpace } from 'lib/ctrl'
 import { HID, isAxis, isMouseAxis, isScrollAxis, isGamepadAxis } from 'lib/hid'
 import { PinV0, PinV1 } from 'lib/pin'
 import { delay } from 'lib/delay'
@@ -47,6 +47,7 @@ export class SectionComponent {
   HID = HID
   SectionIndex = SectionIndex
   GyroMode = GyroMode
+  GyroSpace = GyroSpace
   ThumbstickMode = ThumbstickMode
 
   // Plots.

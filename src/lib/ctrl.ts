@@ -149,6 +149,13 @@ export enum GyroMode {
   AXIS_ABSOLUTE,
 }
 
+// Keep these values in sync with GyroSpace in the firmware.
+export enum GyroSpace {
+  LOCAL,
+  WORLD_TURN,
+  PLAYER_TURN,
+}
+
 export function sectionIsMeta(section: SectionIndex) {
   return section == SectionIndex.META
 }
@@ -774,17 +781,20 @@ export class CtrlGyro extends CtrlSection {
     public override sectionIndex: SectionIndex,
     public mode: GyroMode,
     public engage: number,
+    public space: GyroSpace = GyroSpace.LOCAL,
   ) {
     super(1, DeviceId.ALPAKKA, MessageType.SECTION_SHARE)
   }
 
   static override decode(buffer: Uint8Array) {
     const data = Array.from(buffer)
+    const space = data[8] <= GyroSpace.PLAYER_TURN ? data[8] : GyroSpace.LOCAL
     return new CtrlGyro(
       data[4],  // ProfileIndex.
       data[5],  // SectionIndex.
       data[6],  // Gyro mode.
       data[7],  // Engage button.
+      space,  // Gyro coordinate space.
     )
   }
 
@@ -794,6 +804,7 @@ export class CtrlGyro extends CtrlSection {
       this.sectionIndex,
       Number(this.mode),
       Number(this.engage),
+      Number(this.space),
     ]
   }
 }

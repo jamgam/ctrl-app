@@ -619,6 +619,23 @@ Copyright (C) 2023, Input Labs Oy.
             </select>
         </div>
     </div>
+    <div class='block' *ngIf='gyro.mode != GyroMode.AXIS_ABSOLUTE'>
+        <div class='subtitle'>Coordinate space:</div>
+        <div class='select'>
+            <select
+                [(ngModel)]='gyro.space'
+                (ngModelChange)='save()'
+                >
+                <option [value]='GyroSpace.LOCAL'>Local</option>
+                <option [value]='GyroSpace.WORLD_TURN'>World (turn)</option>
+                <option [value]='GyroSpace.PLAYER_TURN'>Player (turn)</option>
+            </select>
+        </div>
+        <p class='hint'>
+            Local uses controller axes. World uses gravity-defined axes. Player
+            uses local pitch and blends yaw/roll based on gravity.
+        </p>
+    </div>
     <div class='block' *ngIf='gyro.mode==GyroMode.TOUCH_ON || gyro.mode==GyroMode.TOUCH_OFF'>
         <div class='subtitle'>Engage surface/button:</div>
         <div class='select'>

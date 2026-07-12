@@ -20,6 +20,9 @@ extensions, under `Settings`:
 These pages require the matching custom firmware; on stock firmware the
 requests simply time out and the rest of the app works as usual.
 
+The fork also adds a per-profile **gyro coordinate space** selector for
+incremental gyro mappings: Local, World (turn), and Player (turn).
+
 ## Project links
 - [Alpakka Manual](https://inputlabs.io/devices/alpakka/manual).
 - [Alpakka Firmware](https://github.com/inputlabs/alpakka_firmware).
