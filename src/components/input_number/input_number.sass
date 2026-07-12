@@ -25,6 +25,22 @@
                 padding-right: 6px
                 cursor: pointer
                 user-select: none
+        & > input.value
+            height: 35px
+            line-height: 35px
+            color: hsl(0deg, 0%, 80%)
+            background-color: black
+            border: none
+            outline: none
+            font-size: 14px
+            font-weight: bold
+            font-family: inherit
+            padding-left: 10px
+            width: 70px
+            -moz-appearance: textfield
+            &::-webkit-outer-spin-button, &::-webkit-inner-spin-button
+                -webkit-appearance: none
+                margin: 0
     .disabled
         & > span
             color: hsl(0deg, 0%, 30%) !important

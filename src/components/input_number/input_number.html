@@ -4,7 +4,14 @@ Copyright (C) 2023, Input Labs Oy.
 -->
 
 <div class='number' *ngIf='!disabled'>
-    <span class='value'>{{((value * factor) + offset).toFixed(decimals)}}</span>
+    <span class='value' *ngIf='!editable'>{{((value * factor) + offset).toFixed(decimals)}}</span>
+    <input
+        class='value'
+        *ngIf='editable'
+        type='number'
+        [value]='((value * factor) + offset).toFixed(decimals)'
+        (change)='edit($event)'
+    />
     <span class='unit'>{{unit}}</span>
     <span
         class='button'

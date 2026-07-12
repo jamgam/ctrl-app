@@ -31,6 +31,7 @@ export class InputNumberComponent {
   @Input() offset: number = 0
   @Input() disabled: boolean = false
   @Input() disabledMessage: string = ''
+  @Input() editable: boolean = false
   clickTime: number = 0
   timeout: any
   interval: any
@@ -54,6 +55,17 @@ export class InputNumberComponent {
 
   save() {
     this.update.emit(this.value)
+  }
+
+  // Direct typing (editable mode). The typed value is in display units, and
+  // is rounded to the nearest raw unit since raw values are protocol bytes.
+  edit(event: Event) {
+    const target = event.target as HTMLInputElement
+    const typed = Number(target.value)
+    if (Number.isNaN(typed)) return
+    this.value = this.minmax(Math.round((typed - this.offset) / this.factor))
+    target.value = ((this.value * this.factor) + this.offset).toFixed(this.decimals)
+    this.save()
   }
 
   press(dir: Direction) {
