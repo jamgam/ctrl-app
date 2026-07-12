@@ -209,7 +209,11 @@ export function sectionIsAnalog(section: SectionIndex) {
 }
 
 function string_from_slice(buffer: Uint8Array, start: number, end: number) {
-  return new TextDecoder().decode(buffer.slice(start, end)).replace(/\0/g, '')
+  // Fields are C strings: stop at the first null terminator, since the bytes
+  // after it may be stale leftovers from previously stored longer strings.
+  const bytes = buffer.slice(start, end)
+  const nul = bytes.indexOf(0)
+  return new TextDecoder().decode(nul >= 0 ? bytes.subarray(0, nul) : bytes)
 }
 
 function string_to_buffer(size: number, str: string) {
