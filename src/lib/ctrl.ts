@@ -858,6 +858,13 @@ export class CtrlGyro extends CtrlSection {
     public mode: GyroMode,
     public engage: number,
     public space: GyroSpace = GyroSpace.LOCAL,
+    // Real-world sensitivity: firmware derives the X/Y sens from RWS and the
+    // game's mouse counts per 360° (see docs/ctrl_protocol.md in the firmware
+    // repo). RWS values are raw bytes in 0.05 steps.
+    public rwsEnabled: boolean = false,
+    public rwsX: number = 20,  // 1.00 RWS.
+    public rwsY: number = 20,  // 1.00 RWS.
+    public rwsCountsPer360: number = 10000,
   ) {
     super(1, DeviceId.ALPAKKA, MessageType.SECTION_SHARE)
   }
@@ -865,12 +872,17 @@ export class CtrlGyro extends CtrlSection {
   static override decode(buffer: Uint8Array) {
     const data = Array.from(buffer)
     const space = data[8] <= GyroSpace.PLAYER_TURN ? data[8] : GyroSpace.LOCAL
+    const countsPer360 = data[12] + (data[13] << 8) + (data[14] << 16) + (data[15] * 0x1000000)
     return new CtrlGyro(
       data[4],  // ProfileIndex.
       data[5],  // SectionIndex.
       data[6],  // Gyro mode.
       data[7],  // Engage button.
       space,  // Gyro coordinate space.
+      Boolean(data[9]),  // RWS enabled.
+      data[10] || 20,  // RWS horizontal.
+      data[11] || 20,  // RWS vertical.
+      countsPer360 || 10000,  // Game mouse counts per 360°.
     )
   }
 
@@ -881,6 +893,13 @@ export class CtrlGyro extends CtrlSection {
       Number(this.mode),
       Number(this.engage),
       Number(this.space),
+      Number(this.rwsEnabled),
+      this.rwsX,
+      this.rwsY,
+      this.rwsCountsPer360 & 0xFF,
+      (this.rwsCountsPer360 >> 8) & 0xFF,
+      (this.rwsCountsPer360 >> 16) & 0xFF,
+      (this.rwsCountsPer360 >>> 24) & 0xFF,
     ]
   }
 }

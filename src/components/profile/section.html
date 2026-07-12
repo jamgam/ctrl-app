@@ -636,6 +636,58 @@ Copyright (C) 2023, Input Labs Oy.
             uses local pitch and blends yaw/roll based on gravity.
         </p>
     </div>
+    <div class='block' *ngIf='gyro.mode != GyroMode.OFF && gyro.mode != GyroMode.AXIS_ABSOLUTE'>
+        <div class='subtitle'>
+            Real-world sensitivity:
+            <div class='material' (click)='showDialogHelp("gyro-rws")'>live_help</div>
+        </div>
+        <div class='island'>
+            <div class='iconaction'>
+                <span class='name'>Set sensitivity by RWS</span>
+                <span class='material' (click)='gyro.rwsEnabled=!gyro.rwsEnabled; save()'>
+                    {{gyro.rwsEnabled ? 'check_box' : 'check_box_outline_blank'}}
+                </span>
+            </div>
+            <ng-container *ngIf='gyro.rwsEnabled'>
+                <app-input-number
+                    [value]='gyro.rwsX'
+                    (update)='gyro.rwsX=$event; save()'
+                    [unit]="'RWS horizontal'"
+                    [min]='0.05'
+                    [max]='12.75'
+                    [step]='0.05'
+                    [factor]='0.05'
+                    [decimals]='2'
+                    [editable]='true'
+                />
+                <app-input-number
+                    [value]='gyro.rwsY'
+                    (update)='gyro.rwsY=$event; save()'
+                    [unit]="'RWS vertical'"
+                    [min]='0.05'
+                    [max]='12.75'
+                    [step]='0.05'
+                    [factor]='0.05'
+                    [decimals]='2'
+                    [editable]='true'
+                />
+                <app-input-number
+                    [value]='gyro.rwsCountsPer360'
+                    (update)='gyro.rwsCountsPer360=$event; save()'
+                    [unit]="'counts / 360º'"
+                    [min]='100'
+                    [max]='1000000'
+                    [step]='100'
+                    [editable]='true'
+                />
+            </ng-container>
+        </div>
+        <p class='hint' *ngIf='gyro.rwsEnabled'>
+            1 RWS = one controller rotation is one full in-game turn.
+            Enter the game's mouse counts per 360º, then RWS per axis.
+            Overrides the per-axis mouse sensitivity for X and Y.
+        </p>
+    </div>
     <div class='block' *ngIf='gyro.mode==GyroMode.TOUCH_ON || gyro.mode==GyroMode.TOUCH_OFF'>
         <div class='subtitle'>Engage surface/button:</div>
         <div class='select'>
@@ -675,7 +727,7 @@ Copyright (C) 2023, Input Labs Oy.
 <div *ngIf='sectionIsGyroAxis() && getSectionAsGyroAxis() as gyroAxis'>
     <h2>{{getSectionTitle()}}</h2>
 
-    <div class='block' *ngIf="getGyroMode() != 4">
+    <div class='block' *ngIf="getGyroMode() != 4 && !gyroRwsApplies()">
         <div class='subtitle'>Sensitivity relative to DPI:</div>
         <div class='island'>
             <app-input-number
@@ -686,6 +738,10 @@ Copyright (C) 2023, Input Labs Oy.
                 [max]='200'
             />
         </div>
+    </div>
+    <div class='block' *ngIf='gyroRwsApplies()'>
+        <div class='subtitle'>Sensitivity:</div>
+        <p class='hint'>Set by real-world sensitivity (RWS) in Gyro settings.</p>
     </div>
 
     <div class='block'>
@@ -890,6 +946,17 @@ Copyright (C) 2023, Input Labs Oy.
         <h3>Sensitivity as mouse</h3>
         <p>The output in pixels for each complete (360º) thumbstick rotation.</p>
         <p><b>Based on gyro RWS:</b> When enabled, a complete thumbstick rotation becomes 1 RWS in comparison to the RWS reference for the gyro-to-mouse emulation. It makes flickstick configuration easier.</p>
+        <div class='buttons'>
+            <button (click)='hideDialogHelp()'>Makes sense</button>
+        </div>
+    </dialog>
+
+    <dialog id='dialog-help-gyro-rws'>
+        <h3>Real-world sensitivity</h3>
+        <p>1 RWS means one full physical rotation of the controller turns the in-game camera exactly 360º. 2 RWS turns it twice per rotation, 0.5 RWS half.</p>
+        <p><b>Counts / 360º:</b> How many mouse counts the game needs for a full turn at your in-game sensitivity. Get it from mouse-sensitivity.com, or as 360 / (game sensitivity × yaw per count).</p>
+        <p>The sensitivity is derived on the controller, so it stays correct regardless of firmware tick rate. It replaces the per-axis mouse sensitivity for X and Y (Z is unaffected).</p>
+        <p>RWS is exact with the global Mouse sensitivity setting at 800 DPI (1.0×) and the gyro acceleration curve off. Other DPI presets scale it proportionally. Very slow movements are slightly attenuated by the built-in fine-aim curve.</p>
         <div class='buttons'>
             <button (click)='hideDialogHelp()'>Makes sense</button>
         </div>

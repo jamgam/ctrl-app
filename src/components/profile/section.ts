@@ -173,6 +173,16 @@ export class SectionComponent {
     return profile.settingsGyro.mode
   }
 
+  // Whether the shown gyro axis takes its sensitivity from the profile's
+  // real-world sensitivity settings instead of the per-axis sens percent.
+  gyroRwsApplies() {
+    const profile = this.profiles.getProfile(this.profileIndex) as Profile
+    const gyro = profile.settingsGyro
+    return Boolean(gyro.rwsEnabled) &&
+      gyro.mode != GyroMode.AXIS_ABSOLUTE &&
+      [SectionIndex.GYRO_X, SectionIndex.GYRO_Y].includes(this.section.sectionIndex)
+  }
+
   async profileOverwrite() {
     this.webusb.sendProfileOverwrite(this.profileIndex, this.profileOverwriteIndex)
     // Force <select> to initial value. For some reason Angular 2-way binding
