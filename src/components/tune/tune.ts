@@ -4,6 +4,7 @@
 import { Component } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { Router, ActivatedRoute } from '@angular/router'
+import { Subscription } from 'rxjs'
 import { LedComponent } from 'components/led/led'
 import { InputNumberComponent } from 'components/input_number/input_number'
 import { WebusbService } from 'services/webusb'
@@ -59,6 +60,7 @@ export class TuneComponent {
   title: string = ''
   dialogProtocol: any
   dialogProtocolConfirmFunc: any
+  presetSubscription?: Subscription
 
   constructor(
     private router: Router,
@@ -74,6 +76,9 @@ export class TuneComponent {
   ngOnInit() {
     if (!this.webusb.selectedDevice) return
     this.device = this.webusb.selectedDevice
+    this.presetSubscription = this.device.tunes.presetChanged.subscribe((configIndex) => {
+      if (configIndex === this.mode.configIndex) this.syncPresetValues()
+    })
     // Avoid tune options not in dongle.
     if (this.webusb.isDongle()) {
       if (['protocol', 'mouse_sens', 'touch_sens', 'deadzone'].includes(this.mode.url)) {
@@ -81,6 +86,10 @@ export class TuneComponent {
       }
     }
     this.init()
+  }
+
+  ngOnDestroy() {
+    this.presetSubscription?.unsubscribe()
   }
 
   async init() {
@@ -98,11 +107,16 @@ export class TuneComponent {
   async getPreset() {
     // console.log(`getPreset ${ConfigIndex[this.mode.configIndex]}`)
     const tunes = this.webusb.selectedDevice!.tunes
-    const presetWithValues = await tunes.getPreset(this.mode.configIndex)
-    if (this.mode.url != 'protocol') {
-      for(let [index, preset] of  this.mode.presets.entries()) {
-        preset.value = presetWithValues.values[index]
-      }
+    await tunes.getPreset(this.mode.configIndex)
+    this.syncPresetValues()
+  }
+
+  syncPresetValues() {
+    if (this.mode.url == 'protocol' || !this.device) return
+    const presetWithValues = this.device.tunes.presets[this.mode.configIndex]
+    if (!presetWithValues) return
+    for (let [index, preset] of this.mode.presets.entries()) {
+      preset.value = presetWithValues.values[index]
     }
   }
 

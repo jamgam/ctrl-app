@@ -34,6 +34,26 @@ Copyright (C) 2023, Input Labs Oy.
         </a>
     </div>
 
+    <div class='mouse-sensitivity' *ngIf='webusb.isController() && mouseSensitivityReady'>
+        <div class='quick-preset' *ngFor='let preset of mouseSensitivityPresets'>
+            <button
+                type='button'
+                [ngClass]='isActiveMouseSensitivity(preset.index)'
+                (click)='setMouseSensitivity(preset.index)'
+                >{{preset.name}}</button>
+            <app-input-number
+                [value]='preset.value'
+                (update)='updateMouseSensitivity(preset.index, $event)'
+                unit='DPI'
+                [min]='80'
+                [max]='4000'
+                [step]='80'
+                [factor]='80'
+                [editable]='true'
+            />
+        </div>
+    </div>
+
     <div class=filler></div>
 
     <div class='notification' *ngIf='shouldNotifyFirmware()' (click)='showDialog("firmware")'>

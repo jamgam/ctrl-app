@@ -2,6 +2,7 @@
 // Copyright (C) 2023, Input Labs Oy.
 
 import { Device } from 'lib/device'
+import { Subject } from 'rxjs'
 
 export interface PresetWithValues {
   presetIndex: number,
@@ -11,6 +12,7 @@ export interface PresetWithValues {
 export class Tunes {
   device: Device
   presets: PresetWithValues[]
+  presetChanged = new Subject<number>()
 
   constructor(device: Device) {
     this.device = device
@@ -20,6 +22,7 @@ export class Tunes {
   async fetchPreset(configIndex: number) {
     const presetWithValues = await this.device.tryGetConfig(configIndex)
     this.presets[configIndex] = presetWithValues
+    this.presetChanged.next(configIndex)
   }
 
   async getPreset(configIndex: number) {
@@ -31,7 +34,9 @@ export class Tunes {
 
   async setPreset(configIndex: number, presetIndex: number, values: number[]) {
     this.presets[configIndex] = {presetIndex, values}
-    return await this.device.trySetConfig(configIndex, presetIndex, values)
+    const result = await this.device.trySetConfig(configIndex, presetIndex, values)
+    this.presetChanged.next(configIndex)
+    return result
   }
 
   async invalidatePresets() {

@@ -8,6 +8,9 @@ import { SwUpdate, VersionReadyEvent } from '@angular/service-worker'
 import { interval, Subscription } from 'rxjs';
 import { WebusbService } from 'services/webusb'
 import { MINUMUM_FIRMWARE_VERSION } from 'lib/version'
+import { ConfigIndex } from 'lib/ctrl'
+import { Device } from 'lib/device'
+import { InputNumberComponent } from 'components/input_number/input_number'
 
 
 const FW_RELEASES_LINK = 'https://github.com/inputlabs/alpakka_firmware/releases'
@@ -20,6 +23,7 @@ const PWA_UPDATE_CHECK_FREQ = 1000 * 60 * 5  // 5 Minutes.
   standalone: true,
   imports: [
     CommonModule,
+    InputNumberComponent,
     RouterLink,
     RouterLinkActive,
   ],
@@ -34,6 +38,15 @@ export class HeaderComponent {
   lastRouteForSettings = '/'
   PWAUpdateAvailable = false
   PWATimerSub!: Subscription
+  mouseSensitivityPresets = [
+    {index: 2, name: 'High', value: 0},
+    {index: 1, name: 'Med', value: 0},
+    {index: 0, name: 'Low', value: 0},
+  ]
+  private mouseSensitivityDevice?: Device
+  private mouseSensitivityLoading = false
+  private mouseSensitivitySubscription?: Subscription
+  mouseSensitivityReady = false
   // Template aliases.
   LATEST_FIRMWARE = MINUMUM_FIRMWARE_VERSION
   FW_RELEASES_LINK = FW_RELEASES_LINK
@@ -84,10 +97,78 @@ export class HeaderComponent {
 
   ngOnDestroy() {
     this.PWATimerSub.unsubscribe()
+    this.mouseSensitivitySubscription?.unsubscribe()
   }
 
   ngAfterViewChecked() {
     if (this.shouldWarningFirmware()) this.showDialog('firmware')
+  }
+
+  ngDoCheck() {
+    if (this.webusb.selectedDevice !== this.mouseSensitivityDevice) {
+      this.mouseSensitivitySubscription?.unsubscribe()
+      this.mouseSensitivityDevice = this.webusb.selectedDevice
+      this.mouseSensitivityReady = false
+      if (this.mouseSensitivityDevice?.isController()) {
+        this.mouseSensitivitySubscription = this.mouseSensitivityDevice.tunes.presetChanged.subscribe((configIndex) => {
+          if (configIndex === ConfigIndex.SENS_MOUSE) this.syncMouseSensitivity()
+        })
+      }
+      this.loadMouseSensitivity()
+    }
+  }
+
+  async loadMouseSensitivity() {
+    const device = this.mouseSensitivityDevice
+    if (!device || !device.isController() || this.mouseSensitivityLoading) return
+
+    this.mouseSensitivityLoading = true
+    try {
+      await device.waitUntilReady()
+      const preset = await device.tunes.getPreset(ConfigIndex.SENS_MOUSE)
+      if (device !== this.mouseSensitivityDevice) return
+      this.syncMouseSensitivity()
+      this.mouseSensitivityReady = true
+    } catch (error) {
+      console.warn('Could not load mouse sensitivity presets', error)
+    } finally {
+      this.mouseSensitivityLoading = false
+    }
+  }
+
+  syncMouseSensitivity() {
+    const preset = this.mouseSensitivityDevice?.tunes.presets[ConfigIndex.SENS_MOUSE]
+    if (!preset) return
+    for (const quickPreset of this.mouseSensitivityPresets) {
+      quickPreset.value = preset.values[quickPreset.index]
+    }
+  }
+
+  getActiveMouseSensitivity() {
+    const preset = this.mouseSensitivityDevice?.tunes.presets[ConfigIndex.SENS_MOUSE]
+    return preset?.presetIndex
+  }
+
+  isActiveMouseSensitivity(presetIndex: number) {
+    return this.getActiveMouseSensitivity() === presetIndex ? 'selected' : ''
+  }
+
+  async setMouseSensitivity(presetIndex: number, value?: number) {
+    const device = this.mouseSensitivityDevice
+    if (!device || !device.isController()) return
+
+    const values = this.mouseSensitivityPresets
+      .slice()
+      .reverse()
+      .map((preset) => preset.value)
+    if (value !== undefined) values[presetIndex] = value
+    await device.tunes.setPreset(ConfigIndex.SENS_MOUSE, presetIndex, values)
+  }
+
+  updateMouseSensitivity(presetIndex: number, value: number) {
+    const preset = this.mouseSensitivityPresets.find((item) => item.index === presetIndex)!
+    preset.value = value
+    this.setMouseSensitivity(presetIndex, value)
   }
 
   routeIsSettings() {

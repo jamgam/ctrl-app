@@ -55,6 +55,57 @@
                     border-radius: 5px
                     margin: 0 10px
 
+        .mouse-sensitivity
+            display: flex
+            align-items: center
+            gap: 8px
+            margin-left: 16px
+            .quick-preset
+                display: flex
+                align-items: center
+                button
+                    height: 46px
+                    padding: 0 9px
+                    color: hsl(0deg, 0%, 60%)
+                    background: hsl(0deg, 0%, 15%)
+                    border: 2px solid transparent
+                    border-radius: 5px 0 0 5px
+                    font: bold 13px Poppins
+                    cursor: pointer
+                    &.selected
+                        color: black
+                        background: $green
+                app-input-number
+                    width: 145px
+                    border-radius: 0 5px 5px 0
+                    overflow: hidden
+                    background: hsl(0deg, 0%, 15%)
+                    ::ng-deep .number
+                        position: relative
+                        height: 46px
+                        padding-right: 27px
+                        background: hsl(0deg, 0%, 15%) !important
+                    ::ng-deep .number > .value, ::ng-deep .number > .unit
+                        height: 46px
+                        line-height: 46px
+                    ::ng-deep input.value
+                        height: 46px
+                        line-height: 46px
+                        width: 55px
+                        background: hsl(0deg, 0%, 15%) !important
+                    ::ng-deep .number > .button
+                        position: absolute
+                        right: 0
+                        height: 23px
+                        padding: 0 6px
+                        line-height: 23px
+                    ::ng-deep .number > .button .material
+                        line-height: 23px
+                    ::ng-deep .number > .button:nth-last-child(2)
+                        bottom: 0
+                    ::ng-deep .number > .button:last-child
+                        top: 0
+
         .notification
             padding-right: 20px
             color: $yellow
@@ -98,6 +149,8 @@
                 margin-left: 8px !important
         span
             display: none
-
-
-
+    .mouse-sensitivity
+        margin-left: 4px !important
+        gap: 4px !important
+        .quick-preset app-input-number
+            width: 135px !important
