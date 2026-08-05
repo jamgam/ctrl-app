@@ -139,6 +139,8 @@ export class ButtonComponent {
     if (label == 'PROC_TUNE_DEADZONE') return 'DZ'
     if (label == 'PROC_TUNE_UP') return 'Tune up'
     if (label == 'PROC_TUNE_DOWN') return 'Tune down'
+    if (label == 'PROC_GYRO_RECORD') return 'Gyro rec'
+    if (label == 'PROC_GYRO_INVERT_X') return 'Gyro inv X'
     if (label.startsWith('PROC_PROFILE_')) {
       const profileIndex = Number(label.split('_')[2])
       label = this.webusb.getProfiles()!.profiles[profileIndex].meta.name
@@ -201,6 +203,14 @@ export class ButtonComponent {
     if (hid == 'KEY_VOLUME_UP') icon = 'volume_up'
     if (hid == 'KEY_VOLUME_DOWN') icon = 'volume_down'
     if (hid == 'KEY_POWER') icon = 'power_settings_new'
+    if (hid == 'PROC_GYRO_RECORD') {
+      icon = 'radio_button_checked'
+      showLabel = true
+    }
+    if (hid == 'PROC_GYRO_INVERT_X') {
+      icon = 'swap_horiz'
+      showLabel = true
+    }
     if (hid == 'GAMEPAD_SELECT') icon = 'stack'
     if (hid == 'GAMEPAD_START') icon = 'menu'
     if (hid == 'PROC_HOME_GAMEPAD') icon = 'home'

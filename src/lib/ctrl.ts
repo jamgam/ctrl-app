@@ -865,6 +865,9 @@ export class CtrlGyro extends CtrlSection {
     public rwsX: number = 20,  // 1.00 RWS.
     public rwsY: number = 20,  // 1.00 RWS.
     public rwsCountsPer360: number = 10000,
+    // Low-speed smoothing knee (hssnf) on the incremental mouse output. Off
+    // by default, matching profiles saved before this field existed.
+    public smoothing: boolean = false,
   ) {
     super(1, DeviceId.ALPAKKA, MessageType.SECTION_SHARE)
   }
@@ -883,6 +886,7 @@ export class CtrlGyro extends CtrlSection {
       data[10] || 20,  // RWS horizontal.
       data[11] || 20,  // RWS vertical.
       countsPer360 || 10000,  // Game mouse counts per 360°.
+      Boolean(data[16]),  // Low-speed smoothing knee.
     )
   }
 
@@ -900,6 +904,7 @@ export class CtrlGyro extends CtrlSection {
       (this.rwsCountsPer360 >> 8) & 0xFF,
       (this.rwsCountsPer360 >> 16) & 0xFF,
       (this.rwsCountsPer360 >>> 24) & 0xFF,
+      Number(this.smoothing),
     ]
   }
 }
@@ -973,6 +978,11 @@ export class CtrlGyroStream extends Ctrl {
   constructor(
     public time: number,
     public samples: GyroSample[],
+    // Timed recordings (PROC_GYRO_RECORD) are bracketed by marker packets:
+    // sample count byte 0xFF = start (next byte is the duration in seconds),
+    // 0xFE = stop.
+    public marker?: 'start' | 'stop',
+    public duration = 0,
   ) {
     super(1, DeviceId.ALPAKKA, MessageType.GYRO_STREAM)
   }
@@ -980,7 +990,10 @@ export class CtrlGyroStream extends Ctrl {
   static override decode(buffer: Uint8Array) {
     const view = new DataView(buffer.buffer, buffer.byteOffset)
     const time = view.getUint32(4, true)
-    const count = Math.min(view.getUint8(8), 7)
+    const rawCount = view.getUint8(8)
+    if (rawCount == 0xFF) return new CtrlGyroStream(time, [], 'start', view.getUint8(9))
+    if (rawCount == 0xFE) return new CtrlGyroStream(time, [], 'stop')
+    const count = Math.min(rawCount, 7)
     const samples: GyroSample[] = []
     for (let i = 0; i < count; i++) {
       const at = 9 + (i * 7)

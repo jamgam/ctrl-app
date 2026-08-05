@@ -262,9 +262,14 @@ export enum HID {
   PROC_SLEEP,
   PROC_PAIR,
 
-  // Custom Alpakka Lite firmware extensions (PROC_INDEX + 50/51).
+  // Custom Alpakka Lite firmware extension (PROC_INDEX + 44). Bindable:
+  // invert the gyro X (yaw) mouse output while held.
+  PROC_GYRO_INVERT_X,
+
+  // Custom Alpakka Lite firmware extensions (PROC_INDEX + 50/51/52).
   PROC_GYRO_STREAM_START = 252,
   PROC_GYRO_STREAM_STOP = 253,
+  PROC_GYRO_RECORD = 254,  // Bindable: toggle a timed gyro recording.
 }
 
 export function isMouseAxis(action: HID) {

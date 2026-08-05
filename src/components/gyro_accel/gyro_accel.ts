@@ -8,7 +8,7 @@ import { Router } from '@angular/router'
 import { InputNumberComponent } from 'components/input_number/input_number'
 import { InputToggleComponent } from 'components/input_toggle/input_toggle'
 import { WebusbService } from 'services/webusb'
-import { ConfigIndex, CtrlGyroStream, GyroSample } from 'lib/ctrl'
+import { ConfigIndex, GyroSample } from 'lib/ctrl'
 import { HID } from 'lib/hid'
 
 // Chart geometry (SVG viewBox units).
@@ -52,13 +52,14 @@ export class GyroAccelComponent {
   curveDotY = -1
   curveReadout = 'hover the curve'
 
-  // Recording.
-  recording = false
+  // Recording. Session state lives in the Device (lib/device.ts) so
+  // recordings toggled from a controller button bound to Gyro Record are
+  // captured even while this page is closed; this component only mirrors it.
   recStatus = 'idle — gyro data is captured only while the gyro is engaged'
   recSummary = ''
-  samples: GyroSample[] = []
   lastRecording: GyroSample[] = []
-  private t0: number | null = null
+  private seenFinished = -1
+  private statusTimer: any
 
   // Time series chart model.
   tsAvailable = false
@@ -84,10 +85,13 @@ export class GyroAccelComponent {
       return
     }
     this.load()
+    this.syncRecording()
+    this.statusTimer = setInterval(() => this.syncRecording(), 250)
   }
 
   ngOnDestroy() {
-    if (this.recording) this.stopRecording()
+    // The recording itself keeps running on the device session.
+    clearInterval(this.statusTimer)
   }
 
   async load() {
@@ -186,48 +190,46 @@ export class GyroAccelComponent {
 
   // Recording -----------------------------------------------------------
 
-  toggleRecording() {
-    if (this.recording) this.stopRecording()
-    else this.startRecording()
+  get recording() {
+    return !!this.webusb.selectedDevice?.gyroRecording.active
   }
 
-  startRecording() {
+  // Same toggle the controller uses when a button is bound to Gyro Record:
+  // the firmware brackets the stream with start/stop markers and auto-stops
+  // after 60 seconds.
+  toggleRecording() {
+    this.webusb.sendProc(HID.PROC_GYRO_RECORD)
+  }
+
+  // Mirror the device recording session into the page (live status while
+  // recording, charts when a recording completes).
+  private syncRecording() {
     const device = this.webusb.selectedDevice
     if (!device) return
-    this.samples = []
-    this.t0 = null
-    this.recording = true
-    this.recStatus = 'recording: waiting for gyro engagement...'
-    device.gyroStreamListener = (stream) => this.onStream(stream)
-    this.webusb.sendProc(HID.PROC_GYRO_STREAM_START)
-  }
-
-  private onStream(stream: CtrlGyroStream) {
-    if (!this.recording) return
-    if (this.t0 === null) this.t0 = stream.time
-    for (const sample of stream.samples) {
-      this.samples.push({...sample, t: (sample.t - this.t0) >>> 0})
+    const rec = device.gyroRecording
+    if (rec.active) {
+      const left = Math.max(rec.duration - (Date.now() - rec.startedAt) / 1000, 0)
+      const last = rec.samples[rec.samples.length - 1]
+      this.recStatus = (last
+        ? `recording: ${rec.samples.length} samples, now ${Math.round(last.speed)}°/s`
+        : 'recording: waiting for gyro engagement...') +
+        ` — auto-stop in ${Math.ceil(left)}s`
     }
-    const last = this.samples[this.samples.length - 1]
-    this.recStatus = `recording: ${this.samples.length} samples, ` +
-      `${(last.t / 1e6).toFixed(1)}s, now ${Math.round(last.speed)}°/s`
-  }
-
-  stopRecording() {
-    this.webusb.sendProc(HID.PROC_GYRO_STREAM_STOP)
-    const device = this.webusb.selectedDevice
-    if (device) device.gyroStreamListener = undefined
-    this.recording = false
-    if (!this.samples.length) {
+    if (rec.finished == this.seenFinished) return
+    const firstSync = this.seenFinished < 0
+    this.seenFinished = rec.finished
+    if (!firstSync && !rec.samples.length) {
       this.recStatus = 'idle — no samples captured (was the gyro engaged?)'
       return
     }
-    this.lastRecording = this.samples
+    const samples = device.lastGyroRecording
+    if (!samples.length) return
+    this.lastRecording = samples
     this.recStatus = 'idle'
-    const seconds = this.samples[this.samples.length - 1].t / 1e6
-    const speeds = this.samples.map((s) => s.speed).sort((a, b) => a - b)
+    const seconds = samples[samples.length - 1].t / 1e6
+    const speeds = samples.map((s) => s.speed).sort((a, b) => a - b)
     const pct = (p: number) => Math.round(speeds[Math.floor((speeds.length - 1) * p)])
-    this.recSummary = `${this.samples.length} samples over ${seconds.toFixed(1)}s · ` +
+    this.recSummary = `${samples.length} samples over ${seconds.toFixed(1)}s · ` +
       `speed p50=${pct(0.5)} p90=${pct(0.9)} p99=${pct(0.99)}°/s`
     this.buildHistogram()
     this.buildTimeSeries()

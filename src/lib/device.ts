@@ -28,6 +28,7 @@ import {
   CtrlGyroStream,
   CtrlExtraButton,
   CtrlExtraButtons,
+  GyroSample,
 } from 'lib/ctrl'
 
 const ADDR_IN = 3
@@ -57,9 +58,19 @@ export class Device {
   profiles: Profiles
   tunes: Tunes
   // Custom firmware extensions: profile currently active on the controller
-  // (pushed by the firmware on every switch), and gyro recording sink.
+  // (pushed by the firmware on every switch), and the gyro recording session.
+  // Recordings are captured here (not in a component) so a recording started
+  // from a controller button lands even while no gyro page is open.
   activeProfile = -1
-  gyroStreamListener?: (stream: CtrlGyroStream) => void
+  gyroRecording = {
+    active: false,
+    duration: 60,   // Seconds, from the start marker.
+    startedAt: 0,   // Date.now() when the start marker arrived.
+    samples: [] as GyroSample[],
+    finished: 0,    // Bumped when a recording completes, so views can react.
+  }
+  lastGyroRecording: GyroSample[] = []
+  private gyroRecordingT0: number | null = null
 
   constructor(usbDevice: USBDevice) {
     this.usbDevice = usbDevice
@@ -116,9 +127,7 @@ export class Device {
           this.handleCtrlStatusShare(ctrl)
         }
       }
-      if (ctrl instanceof CtrlGyroStream) {
-        if (this.gyroStreamListener) this.gyroStreamListener(ctrl)
-      }
+      if (ctrl instanceof CtrlGyroStream) this.handleGyroStream(ctrl)
       if (ctrl instanceof CtrlConfigShare) {
         // Track the active profile whether the share was requested or pushed.
         if (ctrl.cfgIndex == ConfigIndex.ACTIVE_PROFILE) {
@@ -218,6 +227,33 @@ export class Device {
       targetLogs[0] += ctrl.logMessage
     }
     // console.log(ctrl.logMessage)
+  }
+
+  // Gyro recording session, bracketed by start/stop markers sent by the
+  // firmware (recordings toggled with PROC_GYRO_RECORD, from a bound button
+  // or from the app; the firmware auto-stops them after 60 seconds).
+  handleGyroStream(stream: CtrlGyroStream) {
+    const rec = this.gyroRecording
+    if (stream.marker == 'start') {
+      rec.active = true
+      rec.duration = stream.duration || 60
+      rec.startedAt = Date.now()
+      rec.samples = []
+      this.gyroRecordingT0 = null
+      return
+    }
+    if (stream.marker == 'stop') {
+      if (!rec.active) return
+      rec.active = false
+      if (rec.samples.length) this.lastGyroRecording = rec.samples
+      rec.finished += 1
+      return
+    }
+    if (!rec.active) return
+    if (this.gyroRecordingT0 === null) this.gyroRecordingT0 = stream.time
+    for (const sample of stream.samples) {
+      rec.samples.push({...sample, t: (sample.t - this.gyroRecordingT0) >>> 0})
+    }
   }
 
   handleCtrlStatusShare(ctrl: CtrlStatusShare) {

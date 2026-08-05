@@ -688,6 +688,22 @@ Copyright (C) 2023, Input Labs Oy.
             Overrides the per-axis mouse sensitivity for X and Y.
         </p>
     </div>
+    <div class='block' *ngIf='gyro.mode != GyroMode.OFF && gyro.mode != GyroMode.AXIS_ABSOLUTE'>
+        <div class='subtitle'>Low-speed smoothing:</div>
+        <div class='island'>
+            <div class='iconaction'>
+                <span class='name'>Smooth slow rotations</span>
+                <span class='material' (click)='gyro.smoothing=!gyro.smoothing; save()'>
+                    {{gyro.smoothing ? 'check_box' : 'check_box_outline_blank'}}
+                </span>
+            </div>
+        </div>
+        <p class='hint'>
+            Scales down mouse output below the smoothing knee, reducing gyro
+            noise at the cost of some precision on slow aiming. Only affects
+            axes mapped to mouse movement.
+        </p>
+    </div>
     <div class='block' *ngIf='gyro.mode==GyroMode.TOUCH_ON || gyro.mode==GyroMode.TOUCH_OFF'>
         <div class='subtitle'>Engage surface/button:</div>
         <div class='select'>
