@@ -693,15 +693,36 @@ Copyright (C) 2023, Input Labs Oy.
         <div class='island'>
             <div class='iconaction'>
                 <span class='name'>Smooth slow rotations</span>
-                <span class='material' (click)='gyro.smoothing=!gyro.smoothing; save()'>
+                <span class='material' (click)='gyro.smoothing = gyro.smoothing ? 0 : 12; save()'>
                     {{gyro.smoothing ? 'check_box' : 'check_box_outline_blank'}}
                 </span>
             </div>
+            <ng-container *ngIf='gyro.smoothing'>
+                <!-- Live value while dragging, but only save on release, since
+                save() writes to the device and records an undo entry. -->
+                <div class='slider'>
+                    <input type='range' min='1' max='60' step='1'
+                        [value]='gyro.smoothing'
+                        (input)='gyro.smoothing = +$any($event.target).value'
+                        (change)='save()'>
+                </div>
+                <app-input-number
+                    [value]='gyro.smoothing'
+                    (update)='gyro.smoothing=$event; save()'
+                    [unit]="'°/s threshold'"
+                    [min]='0.5'
+                    [max]='30'
+                    [step]='0.5'
+                    [factor]='0.5'
+                    [decimals]='1'
+                    [editable]='true'
+                />
+            </ng-container>
         </div>
-        <p class='hint'>
-            Scales down mouse output below the smoothing knee, reducing gyro
-            noise at the cost of some precision on slow aiming. Only affects
-            axes mapped to mouse movement.
+        <p class='hint' *ngIf='gyro.smoothing'>
+            Scales down mouse output below the threshold rotation speed,
+            reducing gyro noise at the cost of some precision on slow aiming.
+            Only affects axes mapped to mouse movement.
         </p>
     </div>
     <div class='block' *ngIf='gyro.mode==GyroMode.TOUCH_ON || gyro.mode==GyroMode.TOUCH_OFF'>

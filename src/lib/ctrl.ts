@@ -865,9 +865,11 @@ export class CtrlGyro extends CtrlSection {
     public rwsX: number = 20,  // 1.00 RWS.
     public rwsY: number = 20,  // 1.00 RWS.
     public rwsCountsPer360: number = 10000,
-    // Low-speed smoothing knee (hssnf) on the incremental mouse output. Off
-    // by default, matching profiles saved before this field existed.
-    public smoothing: boolean = false,
+    // Low-speed smoothing knee (hssnf) on the incremental mouse output: the
+    // angular speed below which the output is scaled down, as a raw byte in
+    // 0.5 °/s steps. Zero is off, matching profiles saved before this field
+    // existed.
+    public smoothing: number = 0,
   ) {
     super(1, DeviceId.ALPAKKA, MessageType.SECTION_SHARE)
   }
@@ -886,7 +888,7 @@ export class CtrlGyro extends CtrlSection {
       data[10] || 20,  // RWS horizontal.
       data[11] || 20,  // RWS vertical.
       countsPer360 || 10000,  // Game mouse counts per 360°.
-      Boolean(data[16]),  // Low-speed smoothing knee.
+      data[16],  // Low-speed smoothing knee threshold.
     )
   }
 
@@ -904,7 +906,7 @@ export class CtrlGyro extends CtrlSection {
       (this.rwsCountsPer360 >> 8) & 0xFF,
       (this.rwsCountsPer360 >> 16) & 0xFF,
       (this.rwsCountsPer360 >>> 24) & 0xFF,
-      Number(this.smoothing),
+      this.smoothing,
     ]
   }
 }
