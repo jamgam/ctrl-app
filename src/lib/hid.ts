@@ -266,6 +266,11 @@ export enum HID {
   // invert the gyro X (yaw) mouse output while held.
   PROC_GYRO_INVERT_X,
 
+  // Custom Alpakka Lite firmware extension (PROC_INDEX + 45). Bindable:
+  // sub-second recalibration of the gyro bias and accel offsets, for the
+  // drift that creeps in as the board warms up. Resets GYRO_USER_OFFSET.
+  PROC_CALIBRATE_QUICK,
+
   // Custom Alpakka Lite firmware extensions (PROC_INDEX + 50/51/52).
   PROC_GYRO_STREAM_START = 252,
   PROC_GYRO_STREAM_STOP = 253,

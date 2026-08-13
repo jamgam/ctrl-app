@@ -132,6 +132,7 @@ export class ButtonComponent {
     if (label == 'PROC_SLEEP') return 'Sleep'
     if (label == 'PROC_BOOTSEL') return 'Boot'
     if (label == 'PROC_CALIBRATE') return 'Calibrate'
+    if (label == 'PROC_CALIBRATE_QUICK') return 'Quick cal'
     if (label == 'PROC_PAIR') return 'Pair'
     if (label == 'PROC_TUNE_OS') return 'OS'
     if (label == 'PROC_TUNE_MOUSE_SENS') return 'DPI'
@@ -209,6 +210,10 @@ export class ButtonComponent {
     }
     if (hid == 'PROC_GYRO_INVERT_X') {
       icon = 'swap_horiz'
+      showLabel = true
+    }
+    if (hid == 'PROC_CALIBRATE_QUICK') {
+      icon = 'bolt'
       showLabel = true
     }
     if (hid == 'GAMEPAD_SELECT') icon = 'stack'
