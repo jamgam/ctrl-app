@@ -12,7 +12,7 @@ import { HistoryService } from 'services/history'
 import { Profile } from 'lib/profile'
 import { CtrlSection, CtrlSectionMeta, CtrlButton, CtrlRotary, ConfigIndex, CtrlExtraButton } from 'lib/ctrl'
 import { CtrlThumbstick, CtrlGyro, CtrlGyroAxis, CtrlHome } from 'lib/ctrl'
-import { SectionIndex, sectionIsAnalog } from 'lib/ctrl'
+import { SectionIndex, sectionIsAnalog, profileIndex, profileOf, layerOf } from 'lib/ctrl'
 import { ThumbstickMode, GyroMode, GyroSpace } from 'lib/ctrl'
 import { HID, isAxis, isMouseAxis, isScrollAxis, isGamepadAxis } from 'lib/hid'
 import { PinV0, PinV1 } from 'lib/pin'
@@ -38,6 +38,7 @@ export class SectionComponent {
   @Input() analog: boolean = false
   @ViewChild('mapper') mapper!: MapperComponent
   profileOverwriteIndex = 0
+  layerCopyIndex = -1
   profiles = this.webusb.getProfiles()!
   globalDeadzone = 0
   tab = 0
@@ -183,6 +184,46 @@ export class SectionComponent {
       [SectionIndex.GYRO_X, SectionIndex.GYRO_Y].includes(this.section.sectionIndex)
   }
 
+  // Is a non-base layer being edited? The profile name belongs to the profile,
+  // not to a layer, so it is only editable on the base layer, whose meta is the
+  // one the sidebar and the nav bar read.
+  isLayerView() {
+    return layerOf(this.profileIndex) > 0
+  }
+
+  getLayerNumber() {
+    return layerOf(this.profileIndex) + 1
+  }
+
+  // Layers of this profile other than the one being edited, as copy sources.
+  getOtherLayers() {
+    const current = layerOf(this.profileIndex)
+    return Array.from({length: this.webusb.getProfileLayers()}, (_, i) => i)
+      .filter((layer) => layer != current)
+  }
+
+  // Copy another layer of the same profile over the one being edited. Uses the
+  // same PROFILE_OVERWRITE message as copying a profile, since a layer is
+  // addressed by a profile index like anything else.
+  async copyLayer() {
+    const source = Number(this.layerCopyIndex)
+    if (isNaN(source) || source < 0) return
+    const target = this.profileIndex
+    this.webusb.sendProfileOverwrite(
+      target,
+      profileIndex(profileOf(target), source),
+    )
+    this.layerCopyIndex = -1
+    const element = document.getElementById('copyLayerElement') as any
+    if (element) element.value = -1
+    // Delay so the controller has time to process the request before the
+    // profile is re-fetched, as in profileOverwrite.
+    await delay(500)
+    this.profiles.fetchProfile(target, true)
+    // The editor is showing section objects that were just replaced.
+    this.history.clear()
+  }
+
   async profileOverwrite() {
     this.webusb.sendProfileOverwrite(this.profileIndex, this.profileOverwriteIndex)
     // Force <select> to initial value. For some reason Angular 2-way binding
@@ -205,9 +246,11 @@ export class SectionComponent {
   }
 
   async profileSave() {
-    const profileName = this.profiles.getProfile(this.profileIndex).meta.name
+    // A saved file covers every layer, so it is named after the profile rather
+    // than after whichever layer happens to be open.
+    const profileName = this.profiles.getProfile(profileOf(this.profileIndex)).meta.name
     const filename = `${profileName}.ctrl`
-    const data = this.profiles.saveToBlob(this.profileIndex)
+    const data = await this.profiles.saveToBlob(this.profileIndex)
     const blob = new Blob([data], {type: 'application/octet-stream'})
     const a = document.createElement('a')
     document.body.appendChild(a)
@@ -219,22 +262,22 @@ export class SectionComponent {
   }
 
   thumbstickHasMouseAxis(thumbstick: CtrlThumbstick) {
-    const profile = this.profiles.profiles[this.profileIndex]
+    const profile = this.profiles.getProfile(this.profileIndex)
     return profile.thumbstickHasAxis(thumbstick, isMouseAxis)
   }
 
   thumbstickHasScrollAxis(thumbstick: CtrlThumbstick) {
-    const profile = this.profiles.profiles[this.profileIndex]
+    const profile = this.profiles.getProfile(this.profileIndex)
     return profile.thumbstickHasAxis(thumbstick, isScrollAxis)
   }
 
   thumbstickHasGamepadAxis(thumbstick: CtrlThumbstick) {
-    const profile = this.profiles.profiles[this.profileIndex]
+    const profile = this.profiles.getProfile(this.profileIndex)
     return profile.thumbstickHasAxis(thumbstick, isGamepadAxis)
   }
 
   thumbstickHasOneAnalogAction(thumbstick: CtrlThumbstick) {
-    const profile = this.profiles.profiles[this.profileIndex]
+    const profile = this.profiles.getProfile(this.profileIndex)
     const actions = profile.thumbstickGetActions(thumbstick)
     const actionsPrimary = [...actions.up[0], ...actions.down[0], ...actions.left[0], ...actions.right[0]]
     if (actionsPrimary.length !== 1) return false
@@ -243,7 +286,7 @@ export class SectionComponent {
   }
 
   thumbstickGetActionAngle(thumbstick: CtrlThumbstick) {
-    const profile = this.profiles.profiles[this.profileIndex]
+    const profile = this.profiles.getProfile(this.profileIndex)
     const actions = profile.thumbstickGetActions(thumbstick)
     if      (actions.up[0]   .length > 0) return 0
     else if (actions.right[0].length > 0) return 90
@@ -266,7 +309,7 @@ export class SectionComponent {
     if (is_cardinal) {
       const is_stick_left = sectionName.startsWith('LSTICK_')
       const is_stick_right = sectionName.startsWith('RSTICK_')
-      const profile = this.profiles.profiles[this.profileIndex]
+      const profile = this.profiles.getProfile(this.profileIndex)
       if (is_stick_left  && profile.settingsLStick.mode == ThumbstickMode.ROTATION) return false;
       if (is_stick_right && profile.settingsRStick.mode == ThumbstickMode.ROTATION) return false;
     }

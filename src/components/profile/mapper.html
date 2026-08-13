@@ -183,6 +183,16 @@
             <div class='key' [ngClass]='pickCls(HID.PROC_SLEEP)' (click)='pick(HID.PROC_SLEEP)'>SLEEP</div>
             <div class='key' [ngClass]='pickCls(HID.PROC_GYRO_RECORD)' (click)='pick(HID.PROC_GYRO_RECORD)'><span class='material'>radio_button_checked</span>GYRO REC</div>
             <div class='key' [ngClass]='pickCls(HID.PROC_GYRO_INVERT_X)' (click)='pick(HID.PROC_GYRO_INVERT_X)'><span class='material'>swap_horiz</span>GYRO INV X</div>
+            <div class='key' *ngIf='hasLayers()' [ngClass]='pickCls(HID.PROC_LAYER_HOLD_1 + pickerLayerHold - 1)'>
+                <span class='prevnext' (click)='pickLayerHold(-1)'>⏴</span>
+                <span (click)='pickLayerHold()'><span class='material'>layers</span>HOLD LAYER {{pickerLayerHold + 1}}</span>
+                <span class='prevnext' (click)='pickLayerHold(+1)'>⏵</span>
+            </div>
+            <div class='key' *ngIf='hasLayers()' [ngClass]='pickCls(HID.PROC_LAYER_TOGGLE_1 + pickerLayerToggle - 1)'>
+                <span class='prevnext' (click)='pickLayerToggle(-1)'>⏴</span>
+                <span (click)='pickLayerToggle()'><span class='material'>layers</span>LOCK LAYER {{pickerLayerToggle + 1}}</span>
+                <span class='prevnext' (click)='pickLayerToggle(+1)'>⏵</span>
+            </div>
         </div>
 
         <div class='compact gamepad'>

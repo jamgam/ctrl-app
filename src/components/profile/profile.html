@@ -12,6 +12,18 @@ Copyright (C) 2023, Input Labs Oy.
 </div>
 
 <div class="template" *ngIf='webusb.isConnectedRaw() && webusb.isController()'>
+    <!-- LAYERS -->
+    <div class='layers' *ngIf='webusb.getProfileLayers() > 1'>
+        <span class='label'>Layer</span>
+        <button
+            *ngFor='let layer of getLayers()'
+            type='button'
+            [ngClass]='{selected: layerIsSelected(layer), live: layerIsActiveOnDevice(layer)}'
+            [title]='layer == 0 ? "Base layer" : "Layer " + (layer + 1)'
+            (click)='selectLayer(layer)'
+            >{{layer + 1}}</button>
+    </div>
+
     <div class='fixed_aspect'>
         <!-- BUTTONS -->
         <div
@@ -120,7 +132,7 @@ Copyright (C) 2023, Input Labs Oy.
     <div *ngIf='getSelected()'>
         <app-section
             #section
-            [profileIndex]='profileIndex'
+            [profileIndex]='getProfileIndex()'
             [section]='getSelected()'
             [analog]='sectionCouldBeAnalog(getSelected())'
         />

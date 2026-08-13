@@ -5,8 +5,8 @@ Copyright (C) 2023, Input Labs Oy.
 
 <!-- PROFILE META -->
 <div *ngIf='sectionIsMeta()'>
-    <h2>Profile</h2>
-    <div class='block'>
+    <h2>Profile<span *ngIf='isLayerView()'> &middot; Layer {{getLayerNumber()}}</span></h2>
+    <div class='block' *ngIf='!isLayerView()'>
         <div class='subtitle'>Name:</div>
         <input
             class='island'
@@ -17,6 +17,9 @@ Copyright (C) 2023, Input Labs Oy.
             (change)='save()'
         />
     </div>
+    <p class='hint' *ngIf='isLayerView()'>
+        The name belongs to the profile, so it is edited on layer 1.
+    </p>
     <div class='block'>
         <div class='subtitle'>Copy profile from:</div>
         <div class='select'>
@@ -48,6 +51,24 @@ Copyright (C) 2023, Input Labs Oy.
                 <option class='opt' [value]='-9'>Default - Custom (empty)</option>
             </select>
         </div>
+    </div>
+    <div class='block' *ngIf='webusb.getProfileLayers() > 1'>
+        <div class='subtitle'>Copy layer from:</div>
+        <div class='select'>
+            <select id='copyLayerElement'
+                [(ngModel)]='layerCopyIndex'
+                (ngModelChange)='copyLayer()'
+                >
+                <option class='opt' [value]='-1'>Select a layer</option>
+                <option class='opt' *ngFor='let layer of getOtherLayers()' [value]='layer'>
+                    Layer {{layer + 1}}{{layer == 0 ? ' (base)' : ''}}
+                </option>
+            </select>
+        </div>
+        <p class='hint'>
+            Replaces every binding of the layer being edited with the bindings
+            of the layer chosen. The profile name is kept.
+        </p>
     </div>
     <div class='block'>
         <div class='subtitle'>Import / export:</div>

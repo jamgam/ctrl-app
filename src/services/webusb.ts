@@ -158,8 +158,11 @@ export class WebusbService {
     // Request device firmware version.
     await device.tryGetStatus()
     // Request the profile currently active on the controller (custom firmware
-    // extension, keeps itself updated via unsolicited shares afterwards).
+    // extension, keeps itself updated via unsolicited shares afterwards), and
+    // how many layers per profile this firmware has, which the profile page
+    // needs before it can show its layer tabs.
     if (device.isController()) {
+      await device.fetchProfileLayers()
       device.tryGetConfig(ConfigIndex.ACTIVE_PROFILE).catch(() => {})
     }
     // Force component refresh with dummy redirect technique.
@@ -216,6 +219,18 @@ export class WebusbService {
   getActiveProfile() {
     if (!this.selectedDevice) return -1
     return this.selectedDevice.activeProfile
+  }
+
+  // Layer currently engaged on the controller (0 = base layer).
+  getActiveLayer() {
+    if (!this.selectedDevice) return 0
+    return this.selectedDevice.activeLayer
+  }
+
+  // How many layers per profile the connected firmware stores.
+  getProfileLayers() {
+    if (!this.selectedDevice) return 1
+    return this.selectedDevice.profileLayers
   }
 
   isDongle() {

@@ -7,7 +7,8 @@ import { CtrlSection, CtrlSectionMeta, CtrlButton, CtrlRotary } from 'lib/ctrl'
 import { CtrlThumbstick, CtrlGyro, CtrlGyroAxis, CtrlHome } from 'lib/ctrl'
 import { sectionIsAnalog } from 'lib/ctrl'
 import { ActionGroup } from 'lib/actions'
-import { HID, isAxis } from 'lib/hid'
+import { HID, isAxis, LAYER_HOLD_PROCS, LAYER_TOGGLE_PROCS } from 'lib/hid'
+import { WebusbService } from 'services/webusb'
 
 @Component({
   selector: 'app-mapper',
@@ -29,9 +30,22 @@ export class MapperComponent {
   pickerRotary = 0
   pickerMacro = 1
   pickerTune = 0
+  // Extra layer shown in the layer keys. 0 is the base layer, which is never a
+  // switch target, so the pickers start at 1.
+  pickerLayerHold = 1
+  pickerLayerToggle = 1
   HID = HID
 
-  constructor() {}
+  constructor(public webusb: WebusbService) {}
+
+  // Highest layer that can be switched to, i.e. all but the base layer.
+  getLastLayer() {
+    return Math.max(this.webusb.getProfileLayers() - 1, 1)
+  }
+
+  hasLayers() {
+    return this.webusb.getProfileLayers() > 1
+  }
 
   sectionIsMeta = () => this.section instanceof CtrlSectionMeta
   sectionIsButton = () => this.section instanceof CtrlButton && !(this.section instanceof CtrlHome)
@@ -57,6 +71,12 @@ export class MapperComponent {
       }
       if (action >= HID.PROC_TUNE_OS && action <= HID.PROC_TUNE_DEADZONE) {
         this.pickerTune = action - HID.PROC_TUNE_OS
+      }
+      if (LAYER_HOLD_PROCS.includes(action)) {
+        this.pickerLayerHold = LAYER_HOLD_PROCS.indexOf(action) + 1
+      }
+      if (LAYER_TOGGLE_PROCS.includes(action)) {
+        this.pickerLayerToggle = LAYER_TOGGLE_PROCS.indexOf(action) + 1
       }
     }
     this.dialogKeyPicker = document.getElementById('dialog-keypicker')
@@ -164,6 +184,29 @@ export class MapperComponent {
       3,  // Last tune index.
       this.pickerTune,
       (x) => this.pickerTune=x,
+    )
+  }
+
+  // Layer procs are indexed from layer 1, so the base is one below the first.
+  pickLayerHold(increment = 0) {
+    this._pickSelect(
+      increment,
+      HID.PROC_LAYER_HOLD_1 - 1,
+      1,
+      this.getLastLayer(),
+      this.pickerLayerHold,
+      (x) => this.pickerLayerHold=x,
+    )
+  }
+
+  pickLayerToggle(increment = 0) {
+    this._pickSelect(
+      increment,
+      HID.PROC_LAYER_TOGGLE_1 - 1,
+      1,
+      this.getLastLayer(),
+      this.pickerLayerToggle,
+      (x) => this.pickerLayerToggle=x,
     )
   }
 

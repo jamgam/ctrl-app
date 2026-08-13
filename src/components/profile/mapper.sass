@@ -7,7 +7,7 @@
     $size: 35px
 
     dialog
-        min-width: 935px
+        min-width: 1120px
         min-height: 600px
         user-select: none
         padding: $size
@@ -72,13 +72,26 @@
             border-top: 1px solid transparent
 
     .proc
-        width: $size * 5.5
-        height: 290px
+        // Fixed-height wrapping column: the procedures spill into as many
+        // columns as needed, so the width has to account for all of them.
+        $column: $size * 5.5
+        $columns: 2
+        width: $column * $columns
+        // 8 rows, plus slack so a row that renders a hair over $size (the
+        // inline-block wrapper rows do) cannot cost a whole slot.
+        height: $size * 8 + 10px
         display: flex
         flex-direction: column
         flex-wrap: wrap
+        align-content: flex-start
+        // Both the keys and the wrapper rows are columns-wide. The `.key` rule
+        // has to outweigh `.keyboard .key`, so it cannot be a bare `> div`.
         .key
-            width: 100%
+            width: $column
+        > div
+            flex: 0 0 auto
+            width: $column
+            height: $size
         .half
             width: 50% !important
         .prevnext
@@ -142,7 +155,8 @@
     .close
         position: absolute
         bottom: 30px
-        left: 420px
+        left: 0
+        right: 0
         button
             text-align: center
 

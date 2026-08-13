@@ -2,7 +2,7 @@
 // Copyright (C) 2023, Input Labs Oy.
 
 import { AsyncSubject } from 'rxjs'
-import { HID } from 'lib/hid'
+import { HID, LAYERS_MAX } from 'lib/hid'
 import { timeoutPromise } from 'lib/delay'
 import { Profiles } from 'lib/profiles'
 import { delay } from 'lib/delay'
@@ -29,6 +29,8 @@ import {
   CtrlExtraButton,
   CtrlExtraButtons,
   GyroSample,
+  profileOf,
+  layerOf,
 } from 'lib/ctrl'
 
 const ADDR_IN = 3
@@ -62,6 +64,11 @@ export class Device {
   // Recordings are captured here (not in a component) so a recording started
   // from a controller button lands even while no gyro page is open.
   activeProfile = -1
+  activeLayer = 0
+  // Layers per profile this firmware stores. One until the controller says
+  // otherwise, which is also what firmware predating layers reports by never
+  // answering (see ConfigIndex.PROFILE_LAYERS).
+  profileLayers = 1
   gyroRecording = {
     active: false,
     duration: 60,   // Seconds, from the start marker.
@@ -130,8 +137,10 @@ export class Device {
       if (ctrl instanceof CtrlGyroStream) this.handleGyroStream(ctrl)
       if (ctrl instanceof CtrlConfigShare) {
         // Track the active profile whether the share was requested or pushed.
+        // The preset is a profile index, so it carries the active layer too.
         if (ctrl.cfgIndex == ConfigIndex.ACTIVE_PROFILE) {
-          this.activeProfile = ctrl.preset
+          this.activeProfile = profileOf(ctrl.preset)
+          this.activeLayer = layerOf(ctrl.preset)
         }
         if (this.pendingConfig) {
           this.pendingConfig.next(ctrl)
@@ -434,6 +443,20 @@ export class Device {
         else throw error
       }
     }
+  }
+
+  // How many layers per profile this firmware stores. Deliberately a single
+  // attempt: firmware without layers never answers, and retrying would stall
+  // the connection for seconds to learn what the fallback already assumes.
+  async fetchProfileLayers() {
+    try {
+      const preset = await this.getConfig(ConfigIndex.PROFILE_LAYERS)
+      this.profileLayers = Math.min(Math.max(preset.presetIndex, 1), LAYERS_MAX)
+    } catch (error) {
+      console.warn('Controller did not report profile layers, assuming one', error)
+      this.profileLayers = 1
+    }
+    return this.profileLayers
   }
 
   async tryGetConfig(index: ConfigIndex) {

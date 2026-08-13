@@ -46,7 +46,27 @@ export enum ConfigIndex {
   // Custom Alpakka Lite firmware extensions.
   GYRO_ACCEL_CURVE,   // 11
   SCROLL_BUTTONS,     // 12
-  ACTIVE_PROFILE,     // 13 (share-only, pushed on profile switch).
+  ACTIVE_PROFILE,     // 13 (share-only, pushed on profile/layer switch).
+  PROFILE_LAYERS,     // 14 (share-only, layers per profile in the firmware).
+}
+
+// Profile layers (custom Alpakka Lite firmware extension). Every field that
+// carries a profile index encodes the layer in the high nibble and the profile
+// in the low one, so layer 0 leaves the byte exactly as it was before layers
+// existed. See docs/ctrl_protocol.md in the firmware repo.
+export const PROFILE_MASK = 0x0F
+export const LAYER_SHIFT = 4
+
+export function profileOf(index: number) {
+  return index & PROFILE_MASK
+}
+
+export function layerOf(index: number) {
+  return index >> LAYER_SHIFT
+}
+
+export function profileIndex(profile: number, layer: number) {
+  return ((layer << LAYER_SHIFT) | (profile & PROFILE_MASK))
 }
 
 export enum SectionIndex {

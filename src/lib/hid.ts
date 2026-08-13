@@ -271,11 +271,26 @@ export enum HID {
   // drift that creeps in as the board warms up. Resets GYRO_USER_OFFSET.
   PROC_CALIBRATE_QUICK,
 
+  // Custom Alpakka Lite firmware extension (PROC_INDEX + 46..49). Bindable:
+  // profile layers. HOLD engages the layer while the button is held, TOGGLE
+  // latches it until triggered again.
+  PROC_LAYER_HOLD_1,
+  PROC_LAYER_HOLD_2,
+  PROC_LAYER_TOGGLE_1,
+  PROC_LAYER_TOGGLE_2,
+
   // Custom Alpakka Lite firmware extensions (PROC_INDEX + 50/51/52).
   PROC_GYRO_STREAM_START = 252,
   PROC_GYRO_STREAM_STOP = 253,
   PROC_GYRO_RECORD = 254,  // Bindable: toggle a timed gyro recording.
 }
+
+// Layer-switching actions, indexed by the layer they engage minus one (layer 0
+// is the base layer and is not switched to explicitly). The firmware has room
+// for exactly these, so no build can offer more layers than this allows.
+export const LAYER_HOLD_PROCS = [HID.PROC_LAYER_HOLD_1, HID.PROC_LAYER_HOLD_2]
+export const LAYER_TOGGLE_PROCS = [HID.PROC_LAYER_TOGGLE_1, HID.PROC_LAYER_TOGGLE_2]
+export const LAYERS_MAX = LAYER_HOLD_PROCS.length + 1
 
 export function isMouseAxis(action: HID) {
   if (action >= HID.MOUSE_X && action <= HID.MOUSE_Y_NEG) return true

@@ -14,7 +14,7 @@ import { CtrlExtraButton, CtrlHome } from 'lib/ctrl'
 import { ActionGroup } from 'lib/actions'
 import { ThumbstickMode, GyroMode } from 'lib/ctrl'
 import { sectionIsGyroAxis, sectionIsHome } from 'lib/ctrl'
-import { SectionIndex } from 'lib/ctrl'
+import { SectionIndex, profileIndex as encodeProfileIndex } from 'lib/ctrl'
 import { Device } from 'lib/device'
 
 @Component({
@@ -31,7 +31,10 @@ import { Device } from 'lib/device'
 })
 export class ProfileComponent {
   device?: Device
+  // Base profile, from the route. The layer is picked in-page; getProfileIndex
+  // combines them into the wire profile index everything else is keyed by.
   profileIndex: number = 0
+  layer = 0
   selected: CtrlSection = new CtrlSectionMeta(0, SectionIndex.META, '', 0, 0, 0, 0)
   // Template aliases.
   SectionIndex = SectionIndex
@@ -94,13 +97,49 @@ export class ProfileComponent {
   }
 
   async tryFetchProfile() {
-    console.log('tryFetchProfile', this.profileIndex)
+    console.log('tryFetchProfile', this.getProfileIndex())
     const profiles = this.webusb.selectedDevice!.profiles
-    await profiles.fetchProfile(this.profileIndex, false)
+    await profiles.fetchProfile(this.getProfileIndex(), false)
+  }
+
+  // Wire profile index of what is being edited: base profile plus layer.
+  getProfileIndex() {
+    return encodeProfileIndex(this.profileIndex, this.layer)
   }
 
   getProfile() {
-    return this.webusb.selectedDevice!.profiles.getProfile(this.profileIndex)
+    return this.webusb.selectedDevice!.profiles.getProfile(this.getProfileIndex())
+  }
+
+  // Layer tabs, numbered from 1 for the base layer so they read as "layer 1,
+  // layer 2..." rather than exposing the zero-based wire value.
+  getLayers() {
+    return Array.from({length: this.webusb.getProfileLayers()}, (_, i) => i)
+  }
+
+  // The layer being edited. This has to be a method rather than a `this.layer`
+  // comparison in the template: inside the *ngFor, `this` resolves to the
+  // embedded view, so `this.layer` would be the loop variable, not the field.
+  layerIsSelected(layer: number) {
+    return layer == this.layer
+  }
+
+  layerIsActiveOnDevice(layer: number) {
+    return (
+      this.webusb.getActiveProfile() == this.profileIndex &&
+      this.webusb.getActiveLayer() == layer
+    )
+  }
+
+  async selectLayer(layer: number) {
+    if (layer == this.layer) return
+    this.layer = layer
+    // Section objects are per layer, so any selection and undo baseline from
+    // the previous layer no longer refers to what is on screen.
+    this.history.clear()
+    this.setSelectedMeta()
+    await this.tryFetchProfile()
+    this.setSelectedMeta()
   }
 
   setSelected(section: CtrlSection) {
@@ -295,8 +334,8 @@ export class ProfileComponent {
     this.history.touch(button)
     button.actions = [ActionGroup.empty(4), ActionGroup.empty(4), ActionGroup.empty(4)]
     button.hold = button.double = button.immediate = button.long = button.sticky = false
-    this.history.recordChange(this.profileIndex, button)
-    await this.webusb.trySetSection(this.profileIndex, button)
+    this.history.recordChange(this.getProfileIndex(), button)
+    await this.webusb.trySetSection(this.getProfileIndex(), button)
   }
 
   // Middle-click on a regular mapping tile: clear its actions and labels.
@@ -321,8 +360,8 @@ export class ProfileComponent {
       section.actions = clearGroups(3)
       section.labels = ['', '', '']
     }
-    this.history.recordChange(this.profileIndex, section)
-    await this.webusb.trySetSection(this.profileIndex, section)
+    this.history.recordChange(this.getProfileIndex(), section)
+    await this.webusb.trySetSection(this.getProfileIndex(), section)
   }
 
   // Required so change detection is working better is scenarios where the

@@ -4,6 +4,7 @@
 /// <reference types="w3c-web-usb" />
 
 import { MessageType, SectionIndex, CtrlGyro, CtrlGyroAxis, CtrlExtraButtons, CtrlExtraButtonsAux } from 'lib/ctrl'
+import { profileOf, layerOf, profileIndex } from 'lib/ctrl'
 import { Device } from 'lib/device'
 import { Profile } from 'lib/profile'
 import {
@@ -20,8 +21,14 @@ const NUMBER_OF_PROFILES = 13  // Home + 12 builtin.
 
 export class Profiles {
   device: Device
+  // Keyed by profile index, so the layer travels in the high nibble and layer 0
+  // keeps its plain 0-12 keys (see lib/ctrl). Sparse on purpose.
   profiles: Profile[] = []
   syncedNames = false
+  // Profile indexes whose sections have actually been read from the device. An
+  // untouched entry is indistinguishable from a fetched one otherwise, and
+  // exporting it would write an empty layer over a real one on re-import.
+  fetched = new Set<number>()
 
   constructor(device: Device) {
     this.device = device
@@ -29,12 +36,24 @@ export class Profiles {
   }
 
   async initProfiles() {
-    for(let i of Array(NUMBER_OF_PROFILES).keys()) this.initProfile(i)
+    for(let layer of Array(this.device.profileLayers).keys()) {
+      for(let i of Array(NUMBER_OF_PROFILES).keys()) {
+        this.initProfile(profileIndex(i, layer))
+      }
+    }
   }
 
   initProfile(index: number) {
     this.profiles[index] = new Profile()
+    this.fetched.delete(index)
     this.syncedNames = false
+  }
+
+  // Make sure a profile object exists for an index, which it does not yet if
+  // the firmware reported more layers after the initial pass.
+  ensureProfile(index: number) {
+    if (!this.profiles[index]) this.profiles[index] = new Profile()
+    return this.profiles[index]
   }
 
   async fetchProfileNames() {
@@ -47,11 +66,11 @@ export class Profiles {
 
   async fetchProfileName(index: number) {
     const section = await this.device.tryGetSection(index, SectionIndex.META)
-    this.profiles[index].meta = section as CtrlSectionMeta
+    this.ensureProfile(index).meta = section as CtrlSectionMeta
   }
 
   async fetchProfile(profileIndex: number, strict: boolean) {
-    const profile = this.profiles[profileIndex]
+    const profile = this.ensureProfile(profileIndex)
     // Replace internal meta properties instead of the whole object, so Angular
     // reference to the object is not lost. (Profile name is special because is
     // linked in many dynamic UI elements).
@@ -125,36 +144,64 @@ export class Profiles {
     const extraAux = await this.device.tryGetSection(
       profileIndex, SectionIndex.EXTRA_BUTTONS_AUX) as CtrlExtraButtonsAux
     profile.extraButtons.applyAux(extraAux)
+    this.fetched.add(profileIndex)
+  }
+
+  // Read any layer of this profile that has not been read yet, so operations
+  // covering the whole profile do not work off placeholder data. The layer on
+  // screen is already fetched, so its live section objects are left alone.
+  async fetchMissingLayers(index: number) {
+    const base = profileOf(index)
+    for(let layer=0; layer<this.device.profileLayers; layer++) {
+      const target = profileIndex(base, layer)
+      if (this.fetched.has(target)) continue
+      await this.fetchProfile(target, false)
+    }
   }
 
   getProfile(profileIndex: number) {
-    return this.profiles[profileIndex]
+    return this.ensureProfile(profileIndex)
   }
 
-  saveToBlob(profileIndex: number) {
-    const profile = this.profiles[profileIndex]
+  // A saved profile carries every layer, so exporting and re-importing does not
+  // silently drop layer bindings. A stored section is 60 bytes but only 59 are
+  // used (section index plus 58 data bytes), so the layer rides in the spare
+  // trailing byte: files written before layers existed have a zero there, which
+  // reads back as the base layer.
+  async saveToBlob(index: number) {
+    const base = profileOf(index)
+    await this.fetchMissingLayers(index)
     const data:number[] = []
-    for(const section of profile.getSections()) {
-      const sectionBinary = new Uint8Array(60)
-      const payload = section.payload().slice(1)  // Remove profile index.
-      for (let [i, value] of payload.entries()) {
-        sectionBinary[i] = value
+    for(let layer=0; layer<this.device.profileLayers; layer++) {
+      const profile = this.profiles[profileIndex(base, layer)]
+      if (!profile) continue
+      for(const section of profile.getSections()) {
+        const sectionBinary = new Uint8Array(60)
+        const payload = section.payload().slice(1)  // Remove profile index.
+        for (let [i, value] of payload.entries()) {
+          sectionBinary[i] = value
+        }
+        sectionBinary[59] = layer
+        data.push(...sectionBinary)
       }
-      data.push(...sectionBinary)
     }
     return new Uint8Array(data)
   }
 
-  async loadFromBlob(profileIndex: number, data: Uint8Array) {
+  async loadFromBlob(index: number, data: Uint8Array) {
+    const base = profileOf(index)
     let sections: CtrlSection[] = []
     for(let i=0; i<data.length; i+=60) {
       const rawData = data.slice(i, i+60)
+      const layer = rawData[59]
+      // rawData still ends with the layer marker, which lands past the last
+      // decoded byte of the section and is ignored.
       const sectionData = [
         0,
         0,
         MessageType.SECTION_SHARE,
         0,
-        profileIndex,
+        profileIndex(base, layer),
         ...rawData,
       ]
       const section = Ctrl.decode(new Uint8Array(sectionData)) as CtrlSection
@@ -163,27 +210,33 @@ export class Profiles {
     sections = this.upgradeFrom097(sections)
     for(let section of sections) {
       console.log('Section from blob', section)
-      await this.device.trySetSection(profileIndex, section)
+      await this.device.trySetSection(section.profileIndex, section)
     }
-    this.fetchProfile(profileIndex, true)
+    for(let layer=0; layer<this.device.profileLayers; layer++) {
+      this.fetchProfile(profileIndex(base, layer), true)
+    }
   }
 
   upgradeFrom097(sections: CtrlSection[]): CtrlSection[] {
+    // Only the base layer is inspected: a file old enough to need this upgrade
+    // predates layers, so everything in it is base layer anyway, and counting
+    // sections across layers would misjudge what the file contains.
+    const base = sections.filter((s) => layerOf(s.profileIndex) == 0)
     // Bump profile version.
-    const meta = sections.find(s => s instanceof CtrlSectionMeta) as CtrlSectionMeta
+    const meta = base.find(s => s instanceof CtrlSectionMeta) as CtrlSectionMeta
     meta.versionMajor = 1
     meta.versionMinor = 1
     meta.versionPatch = 0
     // Inject default right stick settings if not defined.
     // (Default made to resemble digital 8-dir as in old controllers).
     const hasRightThumbstick = (
-      sections
+      base
       .filter((section => section instanceof CtrlThumbstick))
       .length == 2
     )
     if (!hasRightThumbstick) {
       const rStickSection = new CtrlThumbstick(
-        sections[0].profileIndex,
+        base[0].profileIndex,
         SectionIndex.RSTICK_SETTINGS,
         ThumbstickMode.DIR8,
         false,  // Distance mode / Ignore misalignment.

@@ -10,6 +10,7 @@
     height: 100%
     max-height: 100%
     .template
+        position: relative
         flex-grow: 1
         display: flex
         flex-shrink: 1
@@ -21,6 +22,40 @@
         padding: 10px
         padding-top: 20px
         padding-bottom: 20px
+
+        // Layer tabs, floating over the top of the diagram so they do not eat
+        // into the space the fixed-aspect controller drawing gets.
+        .layers
+            position: absolute
+            top: 0
+            left: 50%
+            transform: translateX(-50%)
+            z-index: 1
+            display: flex
+            align-items: center
+            gap: 4px
+            .label
+                margin-right: 4px
+                color: hsl(0deg, 0%, 50%)
+                font: bold 12px Poppins
+                text-transform: uppercase
+                letter-spacing: 1px
+            button
+                min-width: 32px
+                height: 28px
+                padding: 0 8px
+                color: hsl(0deg, 0%, 60%)
+                background: hsl(0deg, 0%, 15%)
+                border: 2px solid transparent
+                border-radius: 5px
+                font: bold 14px Poppins
+                &.selected
+                    color: black
+                    background: $green
+                // The layer the controller is on right now, which is not
+                // necessarily the one being edited.
+                &.live
+                    border-color: $green
         .selected
             background-color: hsla(0deg, 0%, 100%, 0.1)
             &.pale

@@ -142,6 +142,14 @@ export class ButtonComponent {
     if (label == 'PROC_TUNE_DOWN') return 'Tune down'
     if (label == 'PROC_GYRO_RECORD') return 'Gyro rec'
     if (label == 'PROC_GYRO_INVERT_X') return 'Gyro inv X'
+    // Layer procs are numbered from layer 1 but shown as the layer number the
+    // profile page uses, which counts the base layer as 1.
+    if (label.startsWith('PROC_LAYER_HOLD_')) {
+      return 'Layer ' + (Number(label.split('_')[3]) + 1)
+    }
+    if (label.startsWith('PROC_LAYER_TOGGLE_')) {
+      return 'Lock L' + (Number(label.split('_')[3]) + 1)
+    }
     if (label.startsWith('PROC_PROFILE_')) {
       const profileIndex = Number(label.split('_')[2])
       label = this.webusb.getProfiles()!.profiles[profileIndex].meta.name
@@ -192,6 +200,10 @@ export class ButtonComponent {
     }
     if (hid.startsWith('PROC_MACRO_')) {
       icon = 'keyboard'
+      showLabel = true
+    }
+    if (hid.startsWith('PROC_LAYER_')) {
+      icon = 'layers'
       showLabel = true
     }
     if (hid == 'KEY_SPACE') icon = 'space_bar'
