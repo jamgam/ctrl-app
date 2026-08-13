@@ -47,6 +47,10 @@ export class HeaderComponent {
   private mouseSensitivityLoading = false
   private mouseSensitivitySubscription?: Subscription
   mouseSensitivityReady = false
+  // Names are only fetched in bulk by the profile page, so the header fetches
+  // the one it needs; this tracks what has already been asked for, per device.
+  private activeProfileNameFetched = -1
+  private activeProfileNameDevice?: Device
   // Template aliases.
   LATEST_FIRMWARE = MINUMUM_FIRMWARE_VERSION
   FW_RELEASES_LINK = FW_RELEASES_LINK
@@ -105,6 +109,7 @@ export class HeaderComponent {
   }
 
   ngDoCheck() {
+    this.syncActiveProfileName()
     if (this.webusb.selectedDevice !== this.mouseSensitivityDevice) {
       this.mouseSensitivitySubscription?.unsubscribe()
       this.mouseSensitivityDevice = this.webusb.selectedDevice
@@ -169,6 +174,51 @@ export class HeaderComponent {
     const preset = this.mouseSensitivityPresets.find((item) => item.index === presetIndex)!
     preset.value = value
     this.setMouseSensitivity(presetIndex, value)
+  }
+
+  // Profile currently active on the controller, shown in the nav bar. The
+  // firmware pushes the index on every switch, but the name lives in the
+  // profile's meta section and has to be read once per profile.
+  private syncActiveProfileName() {
+    const device = this.webusb.selectedDevice
+    if (device !== this.activeProfileNameDevice) {
+      this.activeProfileNameDevice = device
+      this.activeProfileNameFetched = -1
+    }
+    if (!device || !device.isController()) return
+    const index = device.activeProfile
+    if (index < 0 || index == this.activeProfileNameFetched) return
+    if (device.profiles.getProfile(index).meta.name) {
+      this.activeProfileNameFetched = index
+      return
+    }
+    this.activeProfileNameFetched = index
+    device.profiles.fetchProfileName(index).catch((error) => {
+      console.warn('Could not read the active profile name', error)
+      // Let a later pass retry rather than leaving the slot blank forever.
+      if (this.activeProfileNameFetched == index) this.activeProfileNameFetched = -1
+    })
+  }
+
+  getActiveProfileName() {
+    const device = this.webusb.selectedDevice
+    if (!device || !device.isController()) return ''
+    const index = device.activeProfile
+    if (index < 0) return ''
+    return device.profiles.getProfile(index).meta.name
+  }
+
+  // Layer engaged on the controller, blank on the base layer. Numbered as on
+  // the profile page, where the base layer is layer 1.
+  getActiveLayerLabel() {
+    if (this.webusb.getProfileLayers() < 2) return ''
+    const layer = this.webusb.getActiveLayer()
+    if (!layer) return ''
+    return `L${layer + 1}`
+  }
+
+  getActiveProfileRoute() {
+    return `/profiles/${this.webusb.getActiveProfile()}`
   }
 
   routeIsSettings() {

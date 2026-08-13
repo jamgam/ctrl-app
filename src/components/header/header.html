@@ -34,6 +34,16 @@ Copyright (C) 2023, Input Labs Oy.
         </a>
     </div>
 
+    <a class='active-profile'
+        *ngIf='getActiveProfileName()'
+        [routerLink]='getActiveProfileRoute()'
+        title='Profile currently active on the controller'
+        >
+        <span class='material'>stadia_controller</span>
+        <span class='name'>{{getActiveProfileName()}}</span>
+        <span class='layer' *ngIf='getActiveLayerLabel()'>{{getActiveLayerLabel()}}</span>
+    </a>
+
     <div class='mouse-sensitivity' *ngIf='webusb.isController() && mouseSensitivityReady'>
         <div class='quick-preset' *ngFor='let preset of mouseSensitivityPresets'>
             <button
