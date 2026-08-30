@@ -25,6 +25,7 @@ export class LogsComponent {
   filterUSB: boolean = false
   filterTouch: boolean = false
   filterWireless: boolean = false
+  filterPassthrough: boolean = false
 
   constructor(
     public webusb: WebusbService
@@ -60,6 +61,7 @@ export class LogsComponent {
     if (name == 'usb') this.filterUSB = !this.filterUSB
     if (name == 'touch') this.filterTouch = !this.filterTouch
     if (name == 'wireless') this.filterWireless = !this.filterWireless
+    if (name == 'passthrough') this.filterPassthrough = !this.filterPassthrough
     this.filterSet()
   }
 
@@ -68,6 +70,7 @@ export class LogsComponent {
     this.filterUSB = !!(config.presetIndex & LogMask.USB)
     this.filterTouch = !!(config.presetIndex & LogMask.TOUCH)
     this.filterWireless = !!(config.presetIndex & LogMask.WIRELESS)
+    this.filterPassthrough = !!(config.presetIndex & LogMask.PASSTHROUGH)
   }
 
   filterSet() {
@@ -75,6 +78,7 @@ export class LogsComponent {
     if (this.filterUSB) logMask += LogMask.USB
     if (this.filterTouch) logMask += LogMask.TOUCH
     if (this.filterWireless) logMask += LogMask.WIRELESS
+    if (this.filterPassthrough) logMask += LogMask.PASSTHROUGH
     this.webusb.trySetConfig(ConfigIndex.LOG_MASK, logMask, [])
   }
 }

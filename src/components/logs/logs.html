@@ -32,6 +32,14 @@ Copyright (C) 2023, Input Labs Oy.
         </button>
         <button
             class='material'
+            title='Enable passthrough logs'
+            [class.active]='filterPassthrough'
+            (click)='filterToggle("passthrough")'
+            >
+            sports_esports
+        </button>
+        <button
+            class='material'
             title='Download logs'
             (click)='downloadLogs()'
             >

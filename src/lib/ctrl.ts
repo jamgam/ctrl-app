@@ -144,6 +144,7 @@ export enum LogMask {
   USB = 1,
   TOUCH = 2,
   WIRELESS = 4,
+  PASSTHROUGH = 8,  // Custom Alpakka Lite firmware extension.
 }
 
 export enum ButtonMode {
