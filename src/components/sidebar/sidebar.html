@@ -44,11 +44,11 @@ Copyright (C) 2023, Input Labs Oy.
         <span class='material'>screenshot_monitor</span>
         <div>App settings</div>
     </a>
-    <!-- <a routerLink='tools/tester' routerLinkActive='active'>
+    <a routerLink='settings/tester' routerLinkActive='active' *ngIf='webusb.isController()'>
         <span class='material'>sports_esports</span>
-        <div>Output tester</div>
+        <div>Passthrough tester</div>
     </a>
-    <a routerLink='tools/fw_update' routerLinkActive='active'>
+    <!-- <a routerLink='tools/fw_update' routerLinkActive='active'>
         <span class='material'>install_mobile</span>
         <div>Firmware update</div>
     </a> -->

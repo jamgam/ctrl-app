@@ -259,6 +259,10 @@ export class WebusbService {
     return await this.selectedDevice!.sendProfileOverwrite(indexTo, indexFrom)
   }
 
+  async sendPassthroughStream(enable: boolean) {
+    return await this.selectedDevice!.sendPassthroughStream(enable)
+  }
+
   async tryGetConfig(index: ConfigIndex): Promise<PresetWithValues> {
     return await this.selectedDevice!.tryGetConfig(index)
   }

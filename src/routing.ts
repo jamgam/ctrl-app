@@ -7,6 +7,7 @@ import { WipComponent } from 'components/wip/wip'
 import { TuneComponent } from 'components/tune/tune'
 import { SettingsComponent } from 'components/settings/settings'
 import { GyroAccelComponent } from 'components/gyro_accel/gyro_accel'
+import { TesterComponent } from 'components/tester/tester'
 import { ScrollComponent } from 'components/scroll/scroll'
 import { ProfileComponent } from 'components/profile/profile'
 import { HelpWindowsComponent } from 'components/help/help_windows'
@@ -25,7 +26,7 @@ export const routes: Routes = [
   {path: 'settings/scroll', component: ScrollComponent},
   {path: 'settings/advanced', component: SettingsComponent},
   {path: 'settings/app', component: WipComponent},
-  {path: 'settings/tester', component: WipComponent},
+  {path: 'settings/tester', component: TesterComponent},
   {path: 'settings/fw_update', component: WipComponent},
   {path: 'profiles/0', component: ProfileComponent, data: {index:0}},
   {path: 'profiles/1', component: ProfileComponent, data: {index:1}},

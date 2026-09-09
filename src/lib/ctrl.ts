@@ -30,6 +30,8 @@ export enum MessageType {
   STATUS_SHARE,
   PROFILE_OVERWRITE,
   GYRO_STREAM,  // Custom Alpakka Lite firmware extension.
+  PASSTHROUGH_SET,     // Custom Alpakka Lite firmware extension.
+  PASSTHROUGH_STREAM,  // Custom Alpakka Lite firmware extension.
 }
 
 export enum ConfigIndex {
@@ -154,7 +156,19 @@ export enum ButtonMode {
   IMMEDIATE = 8,
   LONG = 16,
   STICKY = 32,
+  // Modifier for NORMAL mode: fires the bound actions as a decelerating
+  // flick burst instead of a plain press. See docs/ctrl_protocol.md (Flick
+  // modifier) and docs/button_logic.md in the firmware repo.
+  FLICK = 64,
+  // Modifier for NORMAL mode: clicks the primary actions, waits
+  // sequenceDelay, then clicks the secondary actions, instead of a plain
+  // press. See docs/ctrl_protocol.md (Sequence modifier) and
+  // docs/button_logic.md in the firmware repo.
+  SEQUENCE = 128,
 }
+
+// CtrlButton.sequenceDelay wire byte -> ms (see ButtonMode.SEQUENCE).
+export const CTRL_SEQUENCE_DELAY_FACTOR = 10
 
 export enum ThumbstickMode {
   OFF,
@@ -275,6 +289,7 @@ export class Ctrl {
     if (msgType == MessageType.STATUS_SHARE) return CtrlStatusShare.decode(buffer)
     if (msgType == MessageType.CONFIG_SHARE) return CtrlConfigShare.decode(buffer)
     if (msgType == MessageType.GYRO_STREAM) return CtrlGyroStream.decode(buffer)
+    if (msgType == MessageType.PASSTHROUGH_STREAM) return CtrlPassthroughStream.decode(buffer)
     if (msgType == MessageType.SECTION_SHARE) {
       const section = data[5]
       if (sectionIsMeta(section)) return CtrlSectionMeta.decode(buffer)
@@ -498,6 +513,8 @@ export class CtrlButton extends CtrlSection {
   immediate = false
   long = false
   sticky = false
+  flick = false
+  sequence = false
 
   constructor(
     public override profileIndex: number,
@@ -505,6 +522,8 @@ export class CtrlButton extends CtrlSection {
     private _mode: number,
     public actions: ActionGroup[] = Array(3).fill(ActionGroup.empty(4)),
     public labels: string[] = Array(3).fill(''),
+    // Raw wire byte (CTRL_SEQUENCE_DELAY_FACTOR steps), not ms.
+    public sequenceDelay: number = 10,
   ) {
     const payload: number[] = []
     super(1, DeviceId.ALPAKKA, MessageType.SECTION_SHARE)
@@ -513,6 +532,8 @@ export class CtrlButton extends CtrlSection {
     if (_mode & ButtonMode.IMMEDIATE) this.immediate = true
     if (_mode & ButtonMode.LONG) this.long = true
     if (_mode & ButtonMode.STICKY) this.sticky = true
+    if (_mode & ButtonMode.FLICK) this.flick = true
+    if (_mode & ButtonMode.SEQUENCE) this.sequence = true
   }
 
   mode(): ButtonMode {
@@ -525,6 +546,10 @@ export class CtrlButton extends CtrlSection {
     }
     if (this.sticky) mode = ButtonMode.STICKY
     if (mode === 0) mode = ButtonMode.NORMAL
+    // Flick/Sequence only apply to a plain NORMAL button, and are mutually
+    // exclusive (see button_logic.md).
+    if (this.flick && mode === ButtonMode.NORMAL) mode += ButtonMode.FLICK
+    else if (this.sequence && mode === ButtonMode.NORMAL) mode += ButtonMode.SEQUENCE
     return mode
   }
 
@@ -543,7 +568,8 @@ export class CtrlButton extends CtrlSection {
         string_from_slice(buffer, 19, 33),  // Label 0.
         string_from_slice(buffer, 33, 47),  // Label 1.
         string_from_slice(buffer, 47, 61),  // Label 2.
-      ]
+      ],
+      data[61],  // Sequence delay.
     )
   }
 
@@ -558,6 +584,7 @@ export class CtrlButton extends CtrlSection {
       ...string_to_buffer(14, this.labels[0]),
       ...string_to_buffer(14, this.labels[1]),
       ...string_to_buffer(14, this.labels[2]),
+      this.sequenceDelay,
     ]
   }
 }
@@ -1029,6 +1056,118 @@ export class CtrlGyroStream extends Ctrl {
       })
     }
     return new CtrlGyroStream(time, samples)
+  }
+}
+
+// Same button/stick shape decoded twice by CtrlPassthroughStream: once for
+// the raw passthrough gamepad state (input), once for how it currently
+// resolves onto the active profile (output). See docs/ctrl_protocol.md
+// (Passthrough STREAM message) for the exact bit layout and the few fields
+// that do not carry over 1:1 (guide, capture/share).
+export interface PassthroughButtons {
+  dpadUp: boolean, dpadDown: boolean, dpadLeft: boolean, dpadRight: boolean,
+  start: boolean, back: boolean, l3: boolean, r3: boolean,
+  l1: boolean, r1: boolean, a: boolean, b: boolean, x: boolean, y: boolean,
+  mode: boolean, capture: boolean, paddleL: boolean, paddleR: boolean,
+  l2: boolean, r2: boolean,
+  // Normalized -1..1, same scale for input and output.
+  lx: number, ly: number, rx: number, ry: number,
+}
+
+// Input has an extra "guide" bit (the passthrough gamepad's own guide/PS
+// button); output has an extra "share" bit (mirrors the vendor "capture" bit
+// -- see below) since select_2 is where the firmware ORs share and capture
+// together, so the two cannot be told apart once they reach the profile.
+export interface PassthroughInput extends PassthroughButtons { guide: boolean }
+export interface PassthroughOutput extends PassthroughButtons { share: boolean, home: boolean }
+
+// Live physical (hardware) state of the 7 Alpakka Lite modded switches next
+// to the bumpers, always 0 on other devices. Not driven by the passthrough
+// gamepad at all -- included in the stream purely so the tester page can
+// show these switches too. See docs/ctrl_protocol.md (Passthrough STREAM
+// message, EXTRA BUTTONS) and src/profile.c's
+// profile_get_extra_buttons_physical() for the bit order.
+export interface PassthroughExtraButtons {
+  el4: boolean, el3: boolean, el2: boolean, el1: boolean,
+  er3: boolean, er2: boolean, er1: boolean,
+}
+
+export class CtrlPassthroughSet extends Ctrl {
+  constructor(
+    public enable: boolean
+  ) {
+    super(1, DeviceId.ALPAKKA, MessageType.PASSTHROUGH_SET)
+  }
+
+  override payload() {
+    return [this.enable ? 1 : 0]
+  }
+}
+
+export class CtrlPassthroughStream extends Ctrl {
+  constructor(
+    public input: PassthroughInput,
+    public output: PassthroughOutput,
+    public extraButtons: PassthroughExtraButtons,
+  ) {
+    super(1, DeviceId.ALPAKKA, MessageType.PASSTHROUGH_STREAM)
+  }
+
+  static override decode(buffer: Uint8Array) {
+    const view = new DataView(buffer.buffer, buffer.byteOffset)
+    const bit = (word: number, i: number) => !!((word >> i) & 1)
+
+    const stdBtns = view.getUint16(4, true)
+    const vendorBtns = view.getUint8(6)
+    const l2r2 = view.getUint8(7)
+    const input: PassthroughInput = {
+      dpadUp: bit(stdBtns, 0), dpadDown: bit(stdBtns, 1),
+      dpadLeft: bit(stdBtns, 2), dpadRight: bit(stdBtns, 3),
+      start: bit(stdBtns, 4), back: bit(stdBtns, 5),
+      l3: bit(stdBtns, 6), r3: bit(stdBtns, 7),
+      l1: bit(stdBtns, 8), r1: bit(stdBtns, 9),
+      guide: bit(stdBtns, 10),
+      a: bit(stdBtns, 12), b: bit(stdBtns, 13),
+      x: bit(stdBtns, 14), y: bit(stdBtns, 15),
+      mode: bit(vendorBtns, 0), capture: bit(vendorBtns, 1),
+      paddleL: bit(vendorBtns, 2), paddleR: bit(vendorBtns, 3),
+      l2: bit(l2r2, 0), r2: bit(l2r2, 1),
+      lx: view.getInt16(8, true) / 32767,
+      ly: view.getInt16(10, true) / 32767,
+      rx: view.getInt16(12, true) / 32767,
+      ry: view.getInt16(14, true) / 32767,
+    }
+
+    const outBtns1 = view.getUint16(16, true)
+    const outBtns2 = view.getUint8(18)
+    const output: PassthroughOutput = {
+      dpadUp: bit(outBtns1, 0), dpadDown: bit(outBtns1, 1),
+      dpadLeft: bit(outBtns1, 2), dpadRight: bit(outBtns1, 3),
+      start: bit(outBtns1, 4), back: bit(outBtns1, 5),
+      l3: bit(outBtns1, 6), r3: bit(outBtns1, 7),
+      l1: bit(outBtns1, 8), r1: bit(outBtns1, 9),
+      // Bit 10 (guide) is always 0 here, see PassthroughOutput doc comment.
+      share: bit(outBtns1, 11),
+      a: bit(outBtns1, 12), b: bit(outBtns1, 13),
+      x: bit(outBtns1, 14), y: bit(outBtns1, 15),
+      mode: bit(outBtns2, 0), capture: bit(outBtns2, 1),
+      paddleL: bit(outBtns2, 2), paddleR: bit(outBtns2, 3),
+      l2: bit(outBtns2, 4), r2: bit(outBtns2, 5),
+      home: bit(outBtns2, 6),
+      lx: view.getInt16(19, true) / 32767,
+      ly: view.getInt16(21, true) / 32767,
+      rx: view.getInt16(23, true) / 32767,
+      ry: view.getInt16(25, true) / 32767,
+    }
+
+    const extraBtns = view.getUint8(27)
+    const extraButtons: PassthroughExtraButtons = {
+      el4: bit(extraBtns, 0), el3: bit(extraBtns, 1),
+      el2: bit(extraBtns, 2), el1: bit(extraBtns, 3),
+      er3: bit(extraBtns, 4), er2: bit(extraBtns, 5), er1: bit(extraBtns, 6),
+    }
+
+    return new CtrlPassthroughStream(input, output, extraButtons)
   }
 }
 

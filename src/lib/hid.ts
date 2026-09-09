@@ -183,6 +183,11 @@ export enum HID {
   MOUSE_X_NEG,
   MOUSE_Y_NEG,
 
+  // Bindable: scroll wheel "flick" up, a decelerating burst of notches
+  // instead of a single tick per press (see profile_scroll_flick in the
+  // firmware's profile.c). Last unused index in the mouse range.
+  MOUSE_SCROLL_FLICK_UP,
+
   GAMEPAD_UP = GAMEPAD_INDEX,
   GAMEPAD_DOWN,
   GAMEPAD_LEFT,
@@ -283,6 +288,12 @@ export enum HID {
   PROC_GYRO_STREAM_START = 252,
   PROC_GYRO_STREAM_STOP = 253,
   PROC_GYRO_RECORD = 254,  // Bindable: toggle a timed gyro recording.
+
+  // Bindable: scroll wheel "flick" down, the counterpart of
+  // MOUSE_SCROLL_FLICK_UP. 255 was the last unused index in the whole action
+  // space (the mouse range was already full), which is why this scroll
+  // action is a procedure rather than living next to its sibling.
+  MOUSE_SCROLL_FLICK_DOWN = 255,
 }
 
 // Layer-switching actions, indexed by the layer they engage minus one (layer 0

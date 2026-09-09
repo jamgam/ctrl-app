@@ -28,6 +28,11 @@ import {
   CtrlGyroStream,
   CtrlExtraButton,
   CtrlExtraButtons,
+  CtrlPassthroughSet,
+  CtrlPassthroughStream,
+  PassthroughInput,
+  PassthroughOutput,
+  PassthroughExtraButtons,
   GyroSample,
   profileOf,
   layerOf,
@@ -78,6 +83,17 @@ export class Device {
   }
   lastGyroRecording: GyroSample[] = []
   private gyroRecordingT0: number | null = null
+  // Latest passthrough tester snapshot (see PASSTHROUGH_STREAM in
+  // docs/ctrl_protocol.md). Captured here rather than in the component so it
+  // survives navigation while the stream is left running; `received` is
+  // bumped on every packet so a polling component can detect new data
+  // without diffing the snapshot itself.
+  passthroughStream = {
+    input: null as PassthroughInput | null,
+    output: null as PassthroughOutput | null,
+    extraButtons: null as PassthroughExtraButtons | null,
+    received: 0,
+  }
 
   constructor(usbDevice: USBDevice) {
     this.usbDevice = usbDevice
@@ -135,6 +151,7 @@ export class Device {
         }
       }
       if (ctrl instanceof CtrlGyroStream) this.handleGyroStream(ctrl)
+      if (ctrl instanceof CtrlPassthroughStream) this.handlePassthroughStream(ctrl)
       if (ctrl instanceof CtrlConfigShare) {
         // Track the active profile whether the share was requested or pushed.
         // The preset is a profile index, so it carries the active layer too.
@@ -265,6 +282,14 @@ export class Device {
     }
   }
 
+  // Passthrough tester (see PASSTHROUGH_STREAM in docs/ctrl_protocol.md).
+  handlePassthroughStream(stream: CtrlPassthroughStream) {
+    this.passthroughStream.input = stream.input
+    this.passthroughStream.output = stream.output
+    this.passthroughStream.extraButtons = stream.extraButtons
+    this.passthroughStream.received += 1
+  }
+
   handleCtrlStatusShare(ctrl: CtrlStatusShare) {
     this.firmwareVersion = ctrl.version
     const wired = this.isProxy() ? 'wireless' : 'wired'
@@ -308,7 +333,12 @@ export class Device {
     await this.send(data)
   }
 
-  async send(ctrl: CtrlProc | CtrlStatusGet | CtrlStatusSet | CtrlConfigGet | CtrlProfileGet) {
+  async sendPassthroughStream(enable: boolean) {
+    const data = new CtrlPassthroughSet(enable)
+    await this.send(data)
+  }
+
+  async send(ctrl: CtrlProc | CtrlStatusGet | CtrlStatusSet | CtrlConfigGet | CtrlProfileGet | CtrlPassthroughSet) {
     if (this.proxyEnabled) {
       ctrl.protocolFlags = CtrlProtocolFlags.WIRELESS
     }

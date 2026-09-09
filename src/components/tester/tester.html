@@ -1,0 +1,105 @@
+<!--
+SPDX-License-Identifier: GPL-2.0-only
+Copyright (C) 2026, jamgam fork (custom Alpakka Lite features).
+-->
+
+<div class='settings'>
+    <h2>Passthrough tester</h2>
+
+    <div class='setting'>
+        <div class='text wide'>
+            <div class='name'>Status</div>
+            <div class='desc'>{{status}}</div>
+        </div>
+    </div>
+
+    <div class='columns'>
+        <div class='column'>
+            <h3>Input <span class='sub'>from the passthrough gamepad</span></h3>
+
+            <div class='sticks'>
+                <svg viewBox='0 0 68 68' class='stick'>
+                    <circle cx='34' cy='34' r='28' class='ring'/>
+                    <circle [attr.cx]='stickDot(input?.lx || 0, input?.ly || 0).cx'
+                            [attr.cy]='stickDot(input?.lx || 0, input?.ly || 0).cy'
+                            r='5' class='dot'/>
+                </svg>
+                <svg viewBox='0 0 68 68' class='stick'>
+                    <circle cx='34' cy='34' r='28' class='ring'/>
+                    <circle [attr.cx]='stickDot(input?.rx || 0, input?.ry || 0).cx'
+                            [attr.cy]='stickDot(input?.rx || 0, input?.ry || 0).cy'
+                            r='5' class='dot'/>
+                </svg>
+            </div>
+
+            <div class='grid'>
+                <div class='chip' *ngFor='let btn of BUTTONS' [class.active]='pressed("input", btn.key)'>
+                    {{btn.label}}
+                </div>
+                <div class='chip' [class.active]='input?.guide'>Guide</div>
+            </div>
+        </div>
+
+        <div class='column'>
+            <h3>Output <span class='sub'>resolved onto the active profile</span></h3>
+
+            <div class='sticks'>
+                <svg viewBox='0 0 68 68' class='stick'>
+                    <circle cx='34' cy='34' r='28' class='ring'/>
+                    <circle [attr.cx]='stickDot(output?.lx || 0, output?.ly || 0).cx'
+                            [attr.cy]='stickDot(output?.lx || 0, output?.ly || 0).cy'
+                            r='5' class='dot'/>
+                </svg>
+                <svg viewBox='0 0 68 68' class='stick'>
+                    <circle cx='34' cy='34' r='28' class='ring'/>
+                    <circle [attr.cx]='stickDot(output?.rx || 0, output?.ry || 0).cx'
+                            [attr.cy]='stickDot(output?.rx || 0, output?.ry || 0).cy'
+                            r='5' class='dot'/>
+                </svg>
+            </div>
+
+            <div class='grid'>
+                <div class='chip' *ngFor='let btn of OUTPUT_BUTTONS' [class.active]='pressed("output", btn.key)'>
+                    {{btn.label}}
+                </div>
+                <div class='chip' [class.active]='output?.home'>Home</div>
+            </div>
+        </div>
+    </div>
+
+    <div class='setting'>
+        <div class='text wide'>
+            <div class='name'>Extra buttons <span class='sub'>EL1-4 / ER1-3, physical state, not passthrough</span></div>
+            <div class='desc'>
+                <div class='grid'>
+                    <div class='chip' *ngFor='let btn of EXTRA_BUTTONS' [class.active]='extraPressed(btn.key)'>
+                        {{btn.label}}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class='setting note'>
+        <div class='text wide'>
+            <div class='name'>Note</div>
+            <div class='desc'>
+                Input labels are DS4 button names; output labels are
+                Alpakka's own profile fields (Select 1/Start 1/Select 2/
+                Start 2), since that side reflects what the profile resolved
+                to, not the DS4 report. Select 2 covers both Capture and
+                Share (the firmware ORs them into one field before either
+                reaches the profile, so there is nothing distinct to show
+                for Share). Home comes from the passthrough guide press,
+                tracked separately since it has no per-profile field like
+                the rest. Extra buttons (EL1-4/ER1-3) are the modded switches
+                next to the bumpers -- unrelated to passthrough, shown here
+                only because this page is a convenient place to watch live
+                button state. They read the physical switch directly, so they
+                stay live whether the switch is left in "inherit" mode
+                (driven through the stock dpad/select/start section above) or
+                diverted to its own actions.
+            </div>
+        </div>
+    </div>
+</div>

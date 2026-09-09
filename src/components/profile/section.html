@@ -153,7 +153,46 @@ Copyright (C) 2023, Input Labs Oy.
                     {{button.sticky ? 'check_box' : 'check_box_outline_blank'}}
                 </span>
             </div>
+            <div
+                class='iconaction'
+                *ngIf='!button.hold && !button.double && !button.sticky && !button.sequence && !sectionIsExtraButton()'
+                >
+                <span class='name'>Flick</span>
+                <span class='material' (click)='button.flick=!button.flick; save()'>
+                    {{button.flick ? 'check_box' : 'check_box_outline_blank'}}
+                </span>
+            </div>
+            <div
+                class='iconaction'
+                *ngIf='!button.hold && !button.double && !button.sticky && !button.flick && !sectionIsExtraButton()'
+                >
+                <span class='name'>Sequence</span>
+                <span class='material' (click)='button.sequence=!button.sequence; save()'>
+                    {{button.sequence ? 'check_box' : 'check_box_outline_blank'}}
+                </span>
+            </div>
         </div>
+        <ng-container *ngIf='button.sequence'>
+            <!-- Live value while dragging, but only save on release, since
+            save() writes to the device and records an undo entry. -->
+            <div class='slider'>
+                <input type='range' min='0' max='255' step='1'
+                    [value]='button.sequenceDelay'
+                    (input)='button.sequenceDelay = +$any($event.target).value'
+                    (change)='save()'>
+            </div>
+            <app-input-number
+                [value]='button.sequenceDelay'
+                (update)='button.sequenceDelay=$event; save()'
+                [unit]="'ms before 2nd press'"
+                [min]='0'
+                [max]='2550'
+                [step]='10'
+                [factor]='10'
+                [decimals]='0'
+                [editable]='true'
+            />
+        </ng-container>
     </div>
 
     <!-- BUTTON ACTIONS -->

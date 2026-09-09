@@ -118,6 +118,8 @@ export class ButtonComponent {
     if (label == 'MOUSE_Y_NEG') return 'Y-'
     if (label == 'MOUSE_SCROLL_UP') return 'Scroll+'
     if (label == 'MOUSE_SCROLL_DOWN') return 'Scroll-'
+    if (label == 'MOUSE_SCROLL_FLICK_UP') return 'Flick+'
+    if (label == 'MOUSE_SCROLL_FLICK_DOWN') return 'Flick-'
     label = label.replace(/^MOUSE_/, '')
     // Modifiers.
     if (label == 'CONTROL_LEFT') label = 'Ctrl'
@@ -225,6 +227,10 @@ export class ButtonComponent {
       showLabel = true
     }
     if (hid == 'PROC_CALIBRATE_QUICK') {
+      icon = 'bolt'
+      showLabel = true
+    }
+    if (hid == 'MOUSE_SCROLL_FLICK_UP' || hid == 'MOUSE_SCROLL_FLICK_DOWN') {
       icon = 'bolt'
       showLabel = true
     }
